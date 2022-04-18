@@ -64,7 +64,7 @@ _StatusCode MemoryAllocator::GetBuff(PCHAR &buff, const ULONG needLength)
     if (Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    if (buff == nullptr || needLength > CAPICITY_OF_ONE_BUFF)
+    if (needLength > CAPICITY_OF_ONE_BUFF)
         return OUT_OF_RANGE;
 
     if (WriteIndex.offset == CAPICITY_OF_ONE_BUFF
@@ -93,7 +93,7 @@ _StatusCode MemoryAllocator::ReadBuff(PCHAR buff, const ULONG requireLength, ULO
     if (Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    if (buff == nullptr)
+    if (buff == nullptr || requireLength == 0)
         return OUT_OF_RANGE;
 
     if (PrimaryBuffIndex[ReadIndex.index] == nullptr)

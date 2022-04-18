@@ -23,7 +23,7 @@ private:
 public:
     ProcessInfoPackager() = default;
     ~ProcessInfoPackager() = default;
-    _StatusCode Init(const PEPROCESS const pInfoPosition);
+    _StatusCode Init(const PEPROCESS pInfoPosition);
     _StatusCode ClearAll();
     _StatusCode GetInfoLength(USHORT &length);
     _StatusCode WriteToBuff(PCHAR const buff);
@@ -38,7 +38,7 @@ private:
 public:
     ThreadInfoPackager() = default;
     ~ThreadInfoPackager() = default;
-    _StatusCode Init(const PETHREAD const pInfoPosition);
+    _StatusCode Init(const PETHREAD pInfoPosition);
     _StatusCode ClearAll();
     _StatusCode GetInfoLength(USHORT &length);
     _StatusCode WriteToBuff(PCHAR const buff);

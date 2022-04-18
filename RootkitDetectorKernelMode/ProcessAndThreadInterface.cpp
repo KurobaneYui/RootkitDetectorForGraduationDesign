@@ -1,8 +1,8 @@
 #include "ProcessAndThreadInterface.h"
 
-_StatusCode ProcessInfoPackager::Init(const PEPROCESS const pInfoPosition)
+_StatusCode ProcessInfoPackager::Init(const PEPROCESS pInfoPosition)
 {
-    Status=DESTROYED;
+    Status = DESTROYED;
 
     if (pInfoPosition == nullptr)
         return OUT_OF_RANGE;
@@ -63,9 +63,9 @@ _StatusCode ProcessInfoPackager::WriteToBuff(PCHAR const buff)
 }
 
 
-_StatusCode ThreadInfoPackager::Init(const PETHREAD const pInfoPosition)
+_StatusCode ThreadInfoPackager::Init(const PETHREAD pInfoPosition)
 {
-    Status=DESTROYED;
+    Status = DESTROYED;
 
     if (pInfoPosition == nullptr)
         return OUT_OF_RANGE;
@@ -76,7 +76,7 @@ _StatusCode ThreadInfoPackager::Init(const PETHREAD const pInfoPosition)
     Info.tid = *(PULONG)pClientID->UniqueThread;
     Info.parentPid = *(PULONG)pClientID->UniqueProcess;
 
-    Status=NORMAL;
+    Status = NORMAL;
 
     return SUCCESS;
 }

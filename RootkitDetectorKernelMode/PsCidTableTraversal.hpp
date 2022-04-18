@@ -4,8 +4,6 @@
 
 #define PSP_CID_TABLE 0x82b59d94
 
-//_OBJECT_TYPE(*const ObGetObjectType) (PVOID pointer) = (_OBJECT_TYPE(*)(PVOID pointer))0x82cb0559;
-
 class PspCidTableTraversal : public Detector
 {
 private:
@@ -61,16 +59,37 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
         for (ULONG i = 0; i < 4 * 1024 / 8; i++)
         {
             // if is EPROCESS
-            //if (*PsProcessType == ObGetObjectType((PVOID)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8)))
-            if (true)
+            UNICODE_STRING funcName;
+            RtlInitUnicodeString(&funcName, L"ObGetObjectType");
+            POBJECT_TYPE(*ObGetObjectType) (PVOID);
+            ObGetObjectType = (POBJECT_TYPE(*)(PVOID))MmGetSystemRoutineAddress(&funcName);
+            if (ObGetObjectType == nullptr)
+                return UNKNOWN;
+            int cmp = memcmp(PsProcessType, (PVOID)ObGetObjectType((PVOID)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8)), 0x2E0);
+            if (cmp == 0)
             {
                 USHORT length;
                 PCHAR buff;
                 ProcessInfoPackager infoPackager;
-                infoPackager.Init((PEPROCESS)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+
+                _StatusCode tmp = infoPackager.Init((PEPROCESS)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+                if (tmp != SUCCESS)
+                {
+                    infoPackager.ClearAll();
+                    return tmp;
+                }
                 infoPackager.GetInfoLength(length);
-                pMemoryAllocator->GetBuff(buff, length);
-                infoPackager.WriteToBuff(buff);
+                if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+                {
+                    infoPackager.ClearAll();
+                    return NO_MEMORY;
+                }
+                tmp = infoPackager.WriteToBuff(buff);
+                if (tmp != SUCCESS)
+                {
+                    infoPackager.ClearAll();
+                    return tmp;
+                }
                 infoPackager.ClearAll();
             }
             else // if is ETHREAD
@@ -78,13 +97,30 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
                 USHORT length;
                 PCHAR buff;
                 ThreadInfoPackager infoPackager;
-                infoPackager.Init((PETHREAD)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+
+                _StatusCode tmp = infoPackager.Init((PETHREAD)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+                if (tmp != SUCCESS)
+                {
+                    infoPackager.ClearAll();
+                    return tmp;
+                }
                 infoPackager.GetInfoLength(length);
-                pMemoryAllocator->GetBuff(buff, length);
-                infoPackager.WriteToBuff(buff);
+                if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+                {
+                    infoPackager.ClearAll();
+                    return NO_MEMORY;
+                }
+                tmp = infoPackager.WriteToBuff(buff);
+                if (tmp != SUCCESS)
+                {
+                    infoPackager.ClearAll();
+                    return tmp;
+                }
                 infoPackager.ClearAll();
             }
         }
+
+        return SUCCESS;
     }
     else
     {
@@ -92,19 +128,25 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
         {
             if (pCurrentTable + i * 4 == nullptr)
                 continue;
-            RecursiveTraversal((PCHAR)((ULONG)pCurrentTable & ~0x7) + i * 4);
+            _StatusCode tmp = RecursiveTraversal((PCHAR)((ULONG)pCurrentTable & ~0x7) + i * 4);
+            if (tmp != SUCCESS)
+            {
+                return tmp;
+            }
         }
+
+        return SUCCESS;
     }
 }
 
 _StatusCode PspCidTableTraversal::Snapshot()
 {
-    // TODO: Haven't finished StatusCode check
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
+
     PCHAR pTableCode = (PCHAR)*(PLONGLONG)pHandle_Table;
     pMemoryAllocator->ResetBuff();
-    RecursiveTraversal(pTableCode);
-
-    return SUCCESS;
+    return RecursiveTraversal(pTableCode);
 }
 
 _StatusCode PspCidTableTraversal::GetInfos(
@@ -112,16 +154,19 @@ _StatusCode PspCidTableTraversal::GetInfos(
     const ULONG bufferLength,
     ULONG &realReadLength)
 {
-    // TODO: Haven't finished StatusCode check
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
 
-    pMemoryAllocator->ReadBuff(buffer, bufferLength, realReadLength);
+    if (buffer == nullptr || bufferLength == 0)
+        return OUT_OF_RANGE;
 
-    return SUCCESS;
+    return pMemoryAllocator->ReadBuff(buffer, bufferLength, realReadLength);
 }
 
 _StatusCode PspCidTableTraversal::FreeupSnapshot()
 {
-    // TODO: Haven't finished StatusCode check
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
 
     pMemoryAllocator->ResetBuff();
 

@@ -73,24 +73,44 @@ _StatusCode PsActiveProcessTraversal::Traversal()
 
     PLIST_ENTRY pCurrentList = ListHead->Flink;
 
-    while (pCurrentList != ListHead) // TODO: Haven't finish StatusCode check
+    while (pCurrentList != ListHead)
     {
         USHORT length;
         PCHAR buff;
         PEPROCESS pCurrentProcess = (PEPROCESS)((PCHAR)pCurrentList - EPROCESS_LIST_OFFSET_WIN7);
         ProcessInfoPackager infoPackager;
 
-        infoPackager.Init(pCurrentProcess);
+        _StatusCode tmp = infoPackager.Init(pCurrentProcess);
+        if (tmp != SUCCESS)
+        {
+            infoPackager.ClearAll();
+            return tmp;
+        }
         infoPackager.GetInfoLength(length);
-        pMemoryAllocator->GetBuff(buff, length);
-        infoPackager.WriteToBuff(buff);
+        if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+        {
+            infoPackager.ClearAll();
+            return NO_MEMORY;
+        }
+        tmp = infoPackager.WriteToBuff(buff);
+        if (tmp != SUCCESS)
+        {
+            infoPackager.ClearAll();
+            return tmp;
+        }
         infoPackager.ClearAll();
 
         PsActiveThreadTraversal threadTraversal;
-        threadTraversal.Init((PLIST_ENTRY)((PCHAR)pCurrentProcess + ETHREAD_LIST_HEAD_IN_EPROCESS_OFFSET_WIN7), pMemoryAllocator);
-        threadTraversal.Snapshot();
+        tmp = threadTraversal.Init((PLIST_ENTRY)((PCHAR)pCurrentProcess + ETHREAD_LIST_HEAD_IN_EPROCESS_OFFSET_WIN7), pMemoryAllocator);
+        if (tmp != SUCCESS)
+            return tmp;
+        tmp = threadTraversal.Snapshot();
+        if (tmp != SUCCESS)
+            return tmp;
 
         pCurrentList = pCurrentList->Flink;
+
+        return SUCCESS;
     }
 
     return SUCCESS;
@@ -98,7 +118,9 @@ _StatusCode PsActiveProcessTraversal::Traversal()
 
 _StatusCode PsActiveProcessTraversal::Snapshot()
 {
-    // TODO: Haven't finish StatusCode check
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
+
     pMemoryAllocator->ResetBuff();
     return Traversal();
 }
@@ -108,14 +130,23 @@ _StatusCode PsActiveProcessTraversal::GetInfos(
     const ULONG bufferLength,
     ULONG &realReadLength)
 {
-    // TODO: Haven't finish StatusCode check
-    pMemoryAllocator->ReadBuff(buffer, bufferLength, realReadLength);
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
+
+    if (buffer == nullptr || bufferLength == 0)
+        return OUT_OF_RANGE;
+
+    return pMemoryAllocator->ReadBuff(buffer, bufferLength, realReadLength);
 }
 
 _StatusCode PsActiveProcessTraversal::FreeupSnapshot()
 {
-    // TODO: Haven't finish StatusCode check
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
+
     pMemoryAllocator->ResetBuff();
+
+    return SUCCESS;
 }
 
 _StatusCode PsActiveThreadTraversal::Init(PLIST_ENTRY pHead, MemoryAllocator * pAllocator)
@@ -140,20 +171,36 @@ _StatusCode PsActiveThreadTraversal::Traversal()
 
     PLIST_ENTRY pCurrentList = ListHead->Flink;
 
-    while (pCurrentList != ListHead) // TODO: Haven't finish StatusCode check
+    while (pCurrentList != ListHead)
     {
         USHORT length;
         PCHAR buff;
         PETHREAD pCurrentThread = (PETHREAD)((PCHAR)pCurrentList - ETHREAD_LIST_HEAD_IN_ETHREAD_OFFSET_WIN7);
         ThreadInfoPackager infoPackager;
 
-        infoPackager.Init(pCurrentThread);
+        _StatusCode tmp = infoPackager.Init(pCurrentThread);
+        if (tmp != SUCCESS)
+        {
+            infoPackager.ClearAll();
+            return tmp;
+        }
         infoPackager.GetInfoLength(length);
-        pMemoryAllocator->GetBuff(buff, length);
-        infoPackager.WriteToBuff(buff);
+        if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+        {
+            infoPackager.ClearAll();
+            return NO_MEMORY;
+        }
+        tmp = infoPackager.WriteToBuff(buff);
+        if (tmp != SUCCESS)
+        {
+            infoPackager.ClearAll();
+            return tmp;
+        }
         infoPackager.ClearAll();
 
         pCurrentList = pCurrentList->Flink;
+
+        return SUCCESS;
     }
 
     return SUCCESS;
@@ -161,7 +208,9 @@ _StatusCode PsActiveThreadTraversal::Traversal()
 
 _StatusCode PsActiveThreadTraversal::Snapshot()
 {
-    // TODO: Haven't finish StatusCode check
+    if (Status == DESTROYED)
+        return HAVE_DESTROYED;
+
     return Traversal();
 }
 
