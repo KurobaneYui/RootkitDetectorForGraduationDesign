@@ -14,45 +14,24 @@
 #define ETHREAD_LIST_HEAD_IN_ETHREAD_OFFSET_WIN7 0x268
 #define THREAD_CLINET_OFFSET_WIN7 0x22c
 
-class ProcessInfoPackager
+typedef struct _ProcessInfoPackager
 {
-private:
     ProcessInfoPackage Info;
-    enum { NORMAL, DESTROYED } Status;
+    StructStatus Status;
+} ProcessInfoPackager;
 
-public:
-    ProcessInfoPackager() = default;
-    ~ProcessInfoPackager() = default;
-    _StatusCode Init(const PEPROCESS pInfoPosition);
-    _StatusCode ClearAll();
-    _StatusCode GetInfoLength(USHORT &length);
-    _StatusCode WriteToBuff(PCHAR const buff);
-};
+StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS pInfoPosition);
+StatusCode ProcessInfoPackager_ClearAll(ProcessInfoPackager *self);
+StatusCode ProcessInfoPackager_GetInfoLength(ProcessInfoPackager *self, USHORT *pLength);
+StatusCode ProcessInfoPackager_WriteToBuff(ProcessInfoPackager *self, PCHAR const buff);
 
-class ThreadInfoPackager
+typedef struct _ThreadInfoPackager
 {
-private:
     ThreadInfoPackage Info;
-    enum { NORMAL, DESTROYED } Status;
+    StructStatus Status;
+} ThreadInfoPackager;
 
-public:
-    ThreadInfoPackager() = default;
-    ~ThreadInfoPackager() = default;
-    _StatusCode Init(const PETHREAD pInfoPosition);
-    _StatusCode ClearAll();
-    _StatusCode GetInfoLength(USHORT &length);
-    _StatusCode WriteToBuff(PCHAR const buff);
-};
-
-__interface Detector
-{
-public:
-    virtual _StatusCode Init(MemoryAllocator * pAllocator) = 0;
-    virtual _StatusCode ClearAll() = 0;
-    virtual _StatusCode Snapshot() = 0;
-    virtual _StatusCode GetInfos(
-        PCHAR buffer,
-        const ULONG bufferLength,
-        ULONG &realReadLength) = 0;
-    virtual _StatusCode FreeupSnapshot() = 0;
-};
+StatusCode ThreadInfoPackager_Init(ThreadInfoPackager *self, const PETHREAD pInfoPosition);
+StatusCode ThreadInfoPackager_ClearAll(ThreadInfoPackager *self);
+StatusCode ThreadInfoPackager_GetInfoLength(ThreadInfoPackager *self, USHORT *pLength);
+StatusCode ThreadInfoPackager_WriteToBuff(ThreadInfoPackager *self, PCHAR const buff);

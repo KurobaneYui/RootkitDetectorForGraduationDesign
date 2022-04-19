@@ -1,110 +1,73 @@
-#pragma once
+#include <PsActiveProcessTraversal.h>
 
-#include <ProcessAndThreadInterface.h>
-
-#define PS_ACTIVE_PROCESS_HEAD 0x82b59d70
-
-class PsActiveProcessTraversal : public Detector
+StatusCode PsActiveProcessTraversal_Init(PsActiveProcessTraversal *self, MemoryAllocator * pAllocator)
 {
-private:
-    PLIST_ENTRY ListHead;
-    MemoryAllocator * pMemoryAllocator;
-    enum { NORMAL, DESTROYED } Status;
-    _StatusCode Traversal();
+    self->Status = DESTROYED;
 
-public:
-    PsActiveProcessTraversal() = default;
-    ~PsActiveProcessTraversal() = default;
-    _StatusCode Init(MemoryAllocator * pAllocator);
-    _StatusCode ClearAll();
-    _StatusCode Snapshot();
-    _StatusCode GetInfos(
-        PCHAR buffer,
-        const ULONG bufferLength,
-        ULONG &realReadLength);
-    _StatusCode FreeupSnapshot();
-};
-
-class PsActiveThreadTraversal
-{
-private:
-    PLIST_ENTRY ListHead;
-    MemoryAllocator * pMemoryAllocator;
-    enum { NORMAL, DESTROYED } Status;
-    _StatusCode Traversal();
-
-public:
-    PsActiveThreadTraversal() = default;
-    ~PsActiveThreadTraversal() = default;
-    _StatusCode Init(PLIST_ENTRY pHead, MemoryAllocator * pAllocator);
-    _StatusCode Snapshot();
-};
-
-_StatusCode PsActiveProcessTraversal::Init(MemoryAllocator * pAllocator)
-{
-    Status = DESTROYED;
-
-    if (pAllocator == nullptr)
+    if (pAllocator == NULL)
         return OUT_OF_RANGE;
 
-    ListHead = (PLIST_ENTRY)PS_ACTIVE_PROCESS_HEAD;
-    pMemoryAllocator = pAllocator;
+    self->ListHead = (PLIST_ENTRY)PS_ACTIVE_PROCESS_HEAD;
+    self->pMemoryAllocator = pAllocator;
 
-    Status = NORMAL;
+    self->Status = NORMAL;
 
     return SUCCESS;
 }
 
-_StatusCode PsActiveProcessTraversal::ClearAll()
+StatusCode PsActiveProcessTraversal_ClearAll(PsActiveProcessTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    pMemoryAllocator->ResetBuff();
+    MemoryAllocator_ResetBuff(self->pMemoryAllocator);
 
-    Status = DESTROYED;
+    self->Status = DESTROYED;
     return SUCCESS;
 }
 
-_StatusCode PsActiveProcessTraversal::Traversal()
+StatusCode PsActiveProcessTraversal_Traversal(PsActiveProcessTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    PLIST_ENTRY pCurrentList = ListHead->Flink;
+    PLIST_ENTRY pCurrentList = self->ListHead->Flink;
 
-    while (pCurrentList != ListHead)
+    while (pCurrentList != self->ListHead)
     {
         USHORT length;
         PCHAR buff;
         PEPROCESS pCurrentProcess = (PEPROCESS)((PCHAR)pCurrentList - EPROCESS_LIST_OFFSET_WIN7);
         ProcessInfoPackager infoPackager;
 
-        _StatusCode tmp = infoPackager.Init(pCurrentProcess);
+        StatusCode tmp = ProcessInfoPackager_Init(&infoPackager, pCurrentProcess);
         if (tmp != SUCCESS)
         {
-            infoPackager.ClearAll();
+            ProcessInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        infoPackager.GetInfoLength(length);
-        if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+        ProcessInfoPackager_GetInfoLength(&infoPackager, &length);
+        if (MemoryAllocator_GetBuff(self->pMemoryAllocator, &buff, length) != SUCCESS)
         {
-            infoPackager.ClearAll();
+            ProcessInfoPackager_ClearAll(&infoPackager);
             return NO_MEMORY;
         }
-        tmp = infoPackager.WriteToBuff(buff);
+        tmp = ProcessInfoPackager_WriteToBuff(&infoPackager, buff);
         if (tmp != SUCCESS)
         {
-            infoPackager.ClearAll();
+            ProcessInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        infoPackager.ClearAll();
+        ProcessInfoPackager_ClearAll(&infoPackager);
 
         PsActiveThreadTraversal threadTraversal;
-        tmp = threadTraversal.Init((PLIST_ENTRY)((PCHAR)pCurrentProcess + ETHREAD_LIST_HEAD_IN_EPROCESS_OFFSET_WIN7), pMemoryAllocator);
+        tmp = PsActiveThreadTraversal_Init(
+            &threadTraversal,
+            (PLIST_ENTRY)((PCHAR)pCurrentProcess + ETHREAD_LIST_HEAD_IN_EPROCESS_OFFSET_WIN7),
+            self->pMemoryAllocator);
         if (tmp != SUCCESS)
             return tmp;
-        tmp = threadTraversal.Snapshot();
+        tmp = PsActiveThreadTraversal_Snapshot(&threadTraversal);
         if (tmp != SUCCESS)
             return tmp;
 
@@ -116,87 +79,88 @@ _StatusCode PsActiveProcessTraversal::Traversal()
     return SUCCESS;
 }
 
-_StatusCode PsActiveProcessTraversal::Snapshot()
+StatusCode PsActiveProcessTraversal_Snapshot(PsActiveProcessTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    pMemoryAllocator->ResetBuff();
-    return Traversal();
+    MemoryAllocator_ResetBuff(self->pMemoryAllocator);
+    return PsActiveProcessTraversal_Traversal(self);
 }
 
-_StatusCode PsActiveProcessTraversal::GetInfos(
+StatusCode PsActiveProcessTraversal_GetInfos(
+    PsActiveProcessTraversal *self,
     PCHAR buffer,
     const ULONG bufferLength,
-    ULONG &realReadLength)
+    PULONG pRealReadLength)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    if (buffer == nullptr || bufferLength == 0)
+    if (buffer == NULL || pRealReadLength == NULL || bufferLength == 0)
         return OUT_OF_RANGE;
 
-    return pMemoryAllocator->ReadBuff(buffer, bufferLength, realReadLength);
+    return MemoryAllocator_ReadBuff(self->pMemoryAllocator, buffer, bufferLength, pRealReadLength);
 }
 
-_StatusCode PsActiveProcessTraversal::FreeupSnapshot()
+StatusCode PsActiveProcessTraversal_FreeupSnapshot(PsActiveProcessTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    pMemoryAllocator->ResetBuff();
+    MemoryAllocator_ResetBuff(self->pMemoryAllocator);
 
     return SUCCESS;
 }
 
-_StatusCode PsActiveThreadTraversal::Init(PLIST_ENTRY pHead, MemoryAllocator * pAllocator)
+StatusCode PsActiveThreadTraversal_Init(PsActiveThreadTraversal *self, PLIST_ENTRY pHead, MemoryAllocator * pAllocator)
 {
-    Status = DESTROYED;
+    self->Status = DESTROYED;
 
-    if (pHead == nullptr || pAllocator == nullptr)
+    if (pHead == NULL || pAllocator == NULL)
         return OUT_OF_RANGE;
 
-    ListHead = pHead;
-    pMemoryAllocator = pAllocator;
+    self->ListHead = pHead;
+    self->pMemoryAllocator = pAllocator;
 
-    Status = NORMAL;
+    self->Status = NORMAL;
 
     return SUCCESS;
 }
 
-_StatusCode PsActiveThreadTraversal::Traversal()
+StatusCode PsActiveThreadTraversal_Traversal(PsActiveThreadTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    PLIST_ENTRY pCurrentList = ListHead->Flink;
+    PLIST_ENTRY pCurrentList = self->ListHead->Flink;
 
-    while (pCurrentList != ListHead)
+    while (pCurrentList != self->ListHead)
     {
         USHORT length;
         PCHAR buff;
         PETHREAD pCurrentThread = (PETHREAD)((PCHAR)pCurrentList - ETHREAD_LIST_HEAD_IN_ETHREAD_OFFSET_WIN7);
         ThreadInfoPackager infoPackager;
 
-        _StatusCode tmp = infoPackager.Init(pCurrentThread);
+        StatusCode tmp = ThreadInfoPackager_Init(&infoPackager, pCurrentThread);
         if (tmp != SUCCESS)
         {
-            infoPackager.ClearAll();
+            ThreadInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        infoPackager.GetInfoLength(length);
-        if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+        ThreadInfoPackager_GetInfoLength(&infoPackager, &length);
+        if (MemoryAllocator_GetBuff(self->pMemoryAllocator, &buff, length) != SUCCESS)
         {
-            infoPackager.ClearAll();
+            ThreadInfoPackager_ClearAll(&infoPackager);
             return NO_MEMORY;
         }
-        tmp = infoPackager.WriteToBuff(buff);
+        tmp = ThreadInfoPackager_WriteToBuff(&infoPackager, buff);
         if (tmp != SUCCESS)
         {
-            infoPackager.ClearAll();
+            ThreadInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        infoPackager.ClearAll();
+        ThreadInfoPackager_ClearAll(&infoPackager);
 
         pCurrentList = pCurrentList->Flink;
 
@@ -206,12 +170,12 @@ _StatusCode PsActiveThreadTraversal::Traversal()
     return SUCCESS;
 }
 
-_StatusCode PsActiveThreadTraversal::Snapshot()
+StatusCode PsActiveThreadTraversal_Snapshot(PsActiveThreadTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    return Traversal();
+    return PsActiveThreadTraversal_Traversal(self);
 }
 
 

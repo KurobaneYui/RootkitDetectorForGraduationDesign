@@ -1,57 +1,31 @@
-#pragma once
+#include <PsCidTableTraversal.h>
 
-#include <ProcessAndThreadInterface.h>
-
-#define PSP_CID_TABLE 0x82b59d94
-
-class PspCidTableTraversal : public Detector
+StatusCode PspCidTableTraversal_Init(PspCidTableTraversal *self, MemoryAllocator *pAllocator)
 {
-private:
-    enum { NORMAL, DESTROYED } Status;
-    PCHAR pHandle_Table;
-    MemoryAllocator * pMemoryAllocator;
-
-    _StatusCode RecursiveTraversal(PCHAR pCurrentTable);
-
-public:
-    PspCidTableTraversal() = default;
-    ~PspCidTableTraversal() = default;
-    _StatusCode Init(MemoryAllocator * pAllocator);
-    _StatusCode ClearAll();
-    _StatusCode Snapshot();
-    _StatusCode GetInfos(
-        PCHAR buffer,
-        const ULONG bufferLength,
-        ULONG &realReadLength);
-    _StatusCode FreeupSnapshot();
-};
-
-_StatusCode PspCidTableTraversal::Init(MemoryAllocator * pAllocator)
-{
-    Status = DESTROYED;
-    if (pAllocator == nullptr)
+    self->Status = DESTROYED;
+    if (pAllocator == NULL)
         return OUT_OF_RANGE;
 
-    pHandle_Table = (PCHAR)PSP_CID_TABLE;
-    pMemoryAllocator = pAllocator;
+    self->pHandle_Table = (PCHAR)PSP_CID_TABLE;
+    self->pMemoryAllocator = pAllocator;
 
-    Status = NORMAL;
+    self->Status = NORMAL;
 
     return SUCCESS;
 }
 
-_StatusCode PspCidTableTraversal::ClearAll()
+StatusCode PspCidTableTraversal_ClearAll(PspCidTableTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    pMemoryAllocator->ResetBuff();
+    MemoryAllocator_ResetBuff(self->pMemoryAllocator);
 
-    Status = DESTROYED;
+    self->Status = DESTROYED;
     return SUCCESS;
 }
 
-_StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
+StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, PCHAR pCurrentTable)
 {
     if (((ULONG)pCurrentTable & 3) == 0)
     {
@@ -63,7 +37,7 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
             RtlInitUnicodeString(&funcName, L"ObGetObjectType");
             POBJECT_TYPE(*ObGetObjectType) (PVOID);
             ObGetObjectType = (POBJECT_TYPE(*)(PVOID))MmGetSystemRoutineAddress(&funcName);
-            if (ObGetObjectType == nullptr)
+            if (ObGetObjectType == NULL)
                 return UNKNOWN;
             int cmp = memcmp(PsProcessType, (PVOID)ObGetObjectType((PVOID)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8)), 0x2E0);
             if (cmp == 0)
@@ -72,7 +46,7 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
                 PCHAR buff;
                 ProcessInfoPackager infoPackager;
 
-                _StatusCode tmp = infoPackager.Init((PEPROCESS)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+                StatusCode tmp = infoPackager.Init((PEPROCESS)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
                 if (tmp != SUCCESS)
                 {
                     infoPackager.ClearAll();
@@ -98,7 +72,7 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
                 PCHAR buff;
                 ThreadInfoPackager infoPackager;
 
-                _StatusCode tmp = infoPackager.Init((PETHREAD)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+                StatusCode tmp = infoPackager.Init((PETHREAD)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
                 if (tmp != SUCCESS)
                 {
                     infoPackager.ClearAll();
@@ -126,9 +100,9 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
     {
         for (ULONG i = 0; i < 4 * 1024 / 4; i++)
         {
-            if (pCurrentTable + i * 4 == nullptr)
+            if (pCurrentTable + i * 4 == NULL)
                 continue;
-            _StatusCode tmp = RecursiveTraversal((PCHAR)((ULONG)pCurrentTable & ~0x7) + i * 4);
+            StatusCode tmp = PspCidTableTraversal_RecursiveTraversal(self, (PCHAR)((ULONG)pCurrentTable & ~0x7) + i * 4);
             if (tmp != SUCCESS)
             {
                 return tmp;
@@ -139,36 +113,37 @@ _StatusCode PspCidTableTraversal::RecursiveTraversal(PCHAR pCurrentTable)
     }
 }
 
-_StatusCode PspCidTableTraversal::Snapshot()
+StatusCode PspCidTableTraversal_Snapshot(PspCidTableTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    PCHAR pTableCode = (PCHAR)*(PLONGLONG)pHandle_Table;
-    pMemoryAllocator->ResetBuff();
-    return RecursiveTraversal(pTableCode);
+    PCHAR pTableCode = (PCHAR) * (PLONGLONG)(self->pHandle_Table);
+    MemoryAllocator_ResetBuff(self->pMemoryAllocator);
+    return PspCidTableTraversal_RecursiveTraversal(self, pTableCode);
 }
 
-_StatusCode PspCidTableTraversal::GetInfos(
+StatusCode PspCidTableTraversal_GetInfos(
+    PspCidTableTraversal *self,
     PCHAR buffer,
     const ULONG bufferLength,
-    ULONG &realReadLength)
+    PULONG pRealReadLength)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    if (buffer == nullptr || bufferLength == 0)
+    if (buffer == NULL || pRealReadLength == NULL || bufferLength == 0)
         return OUT_OF_RANGE;
 
-    return pMemoryAllocator->ReadBuff(buffer, bufferLength, realReadLength);
+    return MemoryAllocator_ReadBuff(self->pMemoryAllocator, buffer, bufferLength, pRealReadLength);
 }
 
-_StatusCode PspCidTableTraversal::FreeupSnapshot()
+StatusCode PspCidTableTraversal_FreeupSnapshot(PspCidTableTraversal *self)
 {
-    if (Status == DESTROYED)
+    if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    pMemoryAllocator->ResetBuff();
+    MemoryAllocator_ResetBuff(self->pMemoryAllocator);
 
     return SUCCESS;
 }

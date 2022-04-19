@@ -140,13 +140,15 @@
     <ClInclude Include="..\CommonHeader\CommonHeader.h" />
     <ClInclude Include="MemAllocatorRootkit.h" />
     <ClInclude Include="ProcessAndThreadInterface.h" />
-    <ClInclude Include="PsActiveProcessTraversal.hpp" />
-    <ClInclude Include="PsCidTableTraversal.hpp" />
+    <ClInclude Include="PsActiveProcessTraversal.h" />
+    <ClInclude Include="PsCidTableTraversal.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="MemAllocatorRootkit.cpp" />
-    <ClCompile Include="ProcessAndThreadInterface.cpp" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="MemAllocatorRootkit.c" />
+    <ClCompile Include="ProcessAndThreadInterface.c" />
+    <ClCompile Include="PsActiveProcessTraversal.c" />
+    <ClCompile Include="PsCidTableTraversal.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
