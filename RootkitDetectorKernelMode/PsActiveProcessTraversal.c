@@ -7,7 +7,8 @@ StatusCode PsActiveProcessTraversal_Init(PsActiveProcessTraversal *self, MemoryA
     if (pAllocator == NULL)
         return OUT_OF_RANGE;
 
-    self->ListHead = (PLIST_ENTRY)PS_ACTIVE_PROCESS_HEAD;
+    self->ListHead = (PLIST_ENTRY)((PCHAR)PsInitialSystemProcess + EPROCESS_LIST_OFFSET_WIN7);
+    self->ListHead = self->ListHead->Blink;
     self->pMemoryAllocator = pAllocator;
 
     self->Status = NORMAL;
@@ -58,6 +59,7 @@ StatusCode PsActiveProcessTraversal_Traversal(PsActiveProcessTraversal *self)
             ProcessInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
+        KdPrint(("ProcessID:%u, ProcessPID:%u , Process:%ws", infoPackager.Info.pid, infoPackager.Info.parentPid, infoPackager.Info.path));
         ProcessInfoPackager_ClearAll(&infoPackager);
 
         PsActiveThreadTraversal threadTraversal;
@@ -160,6 +162,7 @@ StatusCode PsActiveThreadTraversal_Traversal(PsActiveThreadTraversal *self)
             ThreadInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
+        KdPrint(("ThreadID:%u, ThreadPID:%u", infoPackager.Info.tid, infoPackager.Info.parentPid));
         ThreadInfoPackager_ClearAll(&infoPackager);
 
         pCurrentList = pCurrentList->Flink;

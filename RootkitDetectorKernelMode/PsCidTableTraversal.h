@@ -1,8 +1,13 @@
 #pragma once
+#pragma warning(disable:4054 4055)
 
 #include <ProcessAndThreadInterface.h>
+#include <ntifs.h>
+#include <ntddk.h>
+#include <wdm.h>
 
 #define PSP_CID_TABLE 0x82b59d94
+#define PSLOOKUPPROCESS_PSP_CID_TABLE_OFFSET_WIN7 0x20
 
 typedef struct _PspCidTableTraversal
 {

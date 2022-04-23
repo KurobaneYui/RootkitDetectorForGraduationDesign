@@ -1,7 +1,9 @@
 ﻿#pragma once
 
 #include "CommonHeader.h"
+#include <ntifs.h>
 #include <ntddk.h>
+#include <wdm.h>
 
 #define CAPICITY_OF_ONE_BUFF (1024*128)
 #define NUM_OF_BUFF 40

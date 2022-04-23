@@ -11,7 +11,6 @@ StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS p
         (PUNICODE_STRING)((PCHAR)pInfoPosition + IMAGE_FILE_NAME_OFFSET_WIN7);
 
     self->Info.length = sizeof(ProcessInfoPackage)
-        - sizeof(PWCHAR)
         + (pUnicodeString->Length + 1) * sizeof(WCHAR);
     self->Info.type = 1;
     self->Info.pid = *(PULONG)((PCHAR)pInfoPosition + UNIQUE_PROCESS_ID_OFFSET_WIN7);

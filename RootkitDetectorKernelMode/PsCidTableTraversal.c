@@ -6,7 +6,7 @@ StatusCode PspCidTableTraversal_Init(PspCidTableTraversal *self, MemoryAllocator
     if (pAllocator == NULL)
         return OUT_OF_RANGE;
 
-    self->pHandle_Table = (PCHAR)PSP_CID_TABLE;
+    self->pHandle_Table = (PCHAR)*(PULONG)((PCHAR)PsLookupProcessByProcessId + PSLOOKUPPROCESS_PSP_CID_TABLE_OFFSET_WIN7);
     self->pMemoryAllocator = pAllocator;
 
     self->Status = NORMAL;
@@ -46,25 +46,26 @@ StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, P
                 PCHAR buff;
                 ProcessInfoPackager infoPackager;
 
-                StatusCode tmp = infoPackager.Init((PEPROCESS)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+                StatusCode tmp = ProcessInfoPackager_Init(&infoPackager, (PEPROCESS)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
                 if (tmp != SUCCESS)
                 {
-                    infoPackager.ClearAll();
+                    ProcessInfoPackager_ClearAll(&infoPackager);
                     return tmp;
                 }
-                infoPackager.GetInfoLength(length);
-                if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+                ProcessInfoPackager_GetInfoLength(&infoPackager, &length);
+                if (MemoryAllocator_GetBuff(self->pMemoryAllocator, &buff, length) != SUCCESS)
                 {
-                    infoPackager.ClearAll();
+                    ProcessInfoPackager_ClearAll(&infoPackager);
                     return NO_MEMORY;
                 }
-                tmp = infoPackager.WriteToBuff(buff);
+                tmp = ProcessInfoPackager_WriteToBuff(&infoPackager, buff);
                 if (tmp != SUCCESS)
                 {
-                    infoPackager.ClearAll();
+                    ProcessInfoPackager_ClearAll(&infoPackager);
                     return tmp;
                 }
-                infoPackager.ClearAll();
+                //KdPrint(("ProcessID:%u, ProcessPID:%u , Process:%ws", infoPackager.Info.pid, infoPackager.Info.parentPid, infoPackager.Info.path));
+                ProcessInfoPackager_ClearAll(&infoPackager);
             }
             else // if is ETHREAD
             {
@@ -72,25 +73,26 @@ StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, P
                 PCHAR buff;
                 ThreadInfoPackager infoPackager;
 
-                StatusCode tmp = infoPackager.Init((PETHREAD)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
+                StatusCode tmp = ThreadInfoPackager_Init(&infoPackager, (PETHREAD)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8));
                 if (tmp != SUCCESS)
                 {
-                    infoPackager.ClearAll();
+                    ThreadInfoPackager_ClearAll(&infoPackager);
                     return tmp;
                 }
-                infoPackager.GetInfoLength(length);
-                if (pMemoryAllocator->GetBuff(buff, length) != SUCCESS)
+                ThreadInfoPackager_GetInfoLength(&infoPackager, &length);
+                if (MemoryAllocator_GetBuff(self->pMemoryAllocator, &buff, length) != SUCCESS)
                 {
-                    infoPackager.ClearAll();
+                    ThreadInfoPackager_ClearAll(&infoPackager);
                     return NO_MEMORY;
                 }
-                tmp = infoPackager.WriteToBuff(buff);
+                tmp = ThreadInfoPackager_WriteToBuff(&infoPackager, buff);
                 if (tmp != SUCCESS)
                 {
-                    infoPackager.ClearAll();
+                    ThreadInfoPackager_ClearAll(&infoPackager);
                     return tmp;
                 }
-                infoPackager.ClearAll();
+                //KdPrint(("ThreadID:%u, ThreadPID:%u", infoPackager.Info.tid, infoPackager.Info.parentPid));
+                ThreadInfoPackager_ClearAll(&infoPackager);
             }
         }
 
@@ -118,7 +120,7 @@ StatusCode PspCidTableTraversal_Snapshot(PspCidTableTraversal *self)
     if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    PCHAR pTableCode = (PCHAR) * (PLONGLONG)(self->pHandle_Table);
+    PCHAR pTableCode = (PCHAR) * (PLONG)(self->pHandle_Table);
     MemoryAllocator_ResetBuff(self->pMemoryAllocator);
     return PspCidTableTraversal_RecursiveTraversal(self, pTableCode);
 }

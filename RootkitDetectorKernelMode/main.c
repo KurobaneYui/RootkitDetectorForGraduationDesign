@@ -1,49 +1,40 @@
-﻿#include <ntddk.h>
+﻿#include <ntifs.h>
+#include <ntddk.h>
 #include <wdm.h>
 #include <CommonHeader.h>
 #include <MemAllocatorRootkit.h>
 #include <ProcessAndThreadInterface.h>
-#include <PsActiveProcessTraversal.hpp>
-#include <PsCidTableTraversal.hpp>
+#include <PsActiveProcessTraversal.h>
+#include <PsCidTableTraversal.h>
 
 #define DEVICE_NAME L"\\Device\\RootkitDetectorDevice" /*设备名称*/
 #define SYMBOLIC_NAME L"\\??\\RootkitDetectorDevice" /*符号链接*/
 
-MemoryAllocator GlobalMemoryAllocator;
-Detector * pDetector;
-
-void* __cdecl operator new(size_t size)
+typedef struct _GlobalVariables
 {
-    return ExAllocatePoolWithTag(PagedPool, size, ROOTKIT_DETECTOR_TAG);
-}
-
-void __cdecl operator delete(void*p, size_t size)
-{
-    UNREFERENCED_PARAMETER(size);
-    if (p != NULL)
-    {
-        ExFreePoolWithTag(p, ROOTKIT_DETECTOR_TAG);
-    }
-}
+    MemoryAllocator GlobalMemoryAllocatorForList;
+    MemoryAllocator GlobalMemoryAllocatorForTable;
+    PsActiveProcessTraversal psActiveProcessTraversal;
+    PspCidTableTraversal psCidTableTraversal;
+    CHAR togger;
+} GlobalVariables;
 
 void myUnload(_In_ PDRIVER_OBJECT DriverObject)
 {
-    DbgPrint("Driver Unload\n");
+    KdPrint(("Driver Unload\n"));
 
     if (DriverObject->DeviceObject)
     {
-        IoDeleteDevice(DriverObject->DeviceObject);
+        GlobalVariables *pGlobal = (GlobalVariables*)DriverObject->DeviceObject->DeviceExtension;
+        PsActiveProcessTraversal_ClearAll(&pGlobal->psActiveProcessTraversal);
+        PspCidTableTraversal_ClearAll(&pGlobal->psCidTableTraversal);
+        MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForList);
+        MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForTable);
 
         UNICODE_STRING symbolicName = RTL_CONSTANT_STRING(SYMBOLIC_NAME);
-
         IoDeleteSymbolicLink(&symbolicName);
 
-        if (pDetector != nullptr)
-        {
-            pDetector->ClearAll();
-            delete pDetector;
-        }
-        GlobalMemoryAllocator.CleanAll();
+        IoDeleteDevice(DriverObject->DeviceObject);
     }
     return;
 }
@@ -53,6 +44,15 @@ NTSTATUS DeviceCreate(PDEVICE_OBJECT Device_Object, PIRP pirp)
     UNREFERENCED_PARAMETER(Device_Object);
 
     NTSTATUS status = STATUS_SUCCESS;
+
+    GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
+
+    pGlobal->togger = 0;
+    MemoryAllocator_Init(&pGlobal->GlobalMemoryAllocatorForList);
+    MemoryAllocator_Init(&pGlobal->GlobalMemoryAllocatorForTable);
+
+    PsActiveProcessTraversal_Init(&pGlobal->psActiveProcessTraversal, &pGlobal->GlobalMemoryAllocatorForList);
+    PspCidTableTraversal_Init(&pGlobal->psCidTableTraversal, &pGlobal->GlobalMemoryAllocatorForTable);
 
     pirp->IoStatus.Status = status;
 
@@ -69,7 +69,10 @@ NTSTATUS DeviceCleanup(PDEVICE_OBJECT Device_Object, PIRP pirp)
 
     NTSTATUS status = STATUS_SUCCESS;
 
-    pDetector->FreeupSnapshot(); // 清理进线程快照的内存
+    GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
+
+    PsActiveProcessTraversal_FreeupSnapshot(&pGlobal->psActiveProcessTraversal);
+    PspCidTableTraversal_FreeupSnapshot(&pGlobal->psCidTableTraversal);
 
     pirp->IoStatus.Status = status;
 
@@ -101,6 +104,8 @@ NTSTATUS DeviceRead(PDEVICE_OBJECT Device_Object, PIRP pirp)
 
     NTSTATUS status = STATUS_SUCCESS;
 
+    GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
+
     PIO_STACK_LOCATION pstack = IoGetCurrentIrpStackLocation(pirp);
 
     ULONG readsize = pstack->Parameters.Read.Length;
@@ -109,7 +114,10 @@ NTSTATUS DeviceRead(PDEVICE_OBJECT Device_Object, PIRP pirp)
 
     ULONG realLength;
     RtlZeroMemory(readbuffer, readsize);
-    pDetector->GetInfos(readbuffer, readsize, realLength);
+    if (pGlobal->togger == 0)
+        PsActiveProcessTraversal_GetInfos(&pGlobal->psActiveProcessTraversal, readbuffer, readsize, &realLength);
+    else
+        PspCidTableTraversal_GetInfos(&pGlobal->psCidTableTraversal, readbuffer, readsize, &realLength);
 
     pirp->IoStatus.Status = status;
 
@@ -124,7 +132,11 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
 {
     UNREFERENCED_PARAMETER(Device_Object);
 
+    KdBreakPoint();
+
     NTSTATUS status = STATUS_SUCCESS;
+
+    GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
 
     PIO_STACK_LOCATION pstack = IoGetCurrentIrpStackLocation(pirp);
 
@@ -134,15 +146,20 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
     switch (iocode)
     {
     case IOCTL_SNAPSHOT:
-        DbgPrint("Togger Device Control and togger right control code!\n");
+        KdPrint(("Togger Device Control to SNAPSHOT!\n"));
 
-        pDetector->Snapshot();
+        PsActiveProcessTraversal_Snapshot(&pGlobal->psActiveProcessTraversal);
+        PspCidTableTraversal_Snapshot(&pGlobal->psCidTableTraversal);
 
+        break;
+    case IOCTL_SWITCH:
+        KdPrint(("Togger Device Control to SWITCH!\n"));
+        ((GlobalVariables*)Device_Object->DeviceExtension)->togger = ((GlobalVariables*)Device_Object->DeviceExtension)->togger == 0 ? 1 : 0;
         break;
     default:
         status = STATUS_UNSUCCESSFUL;
         information = 0;
-        DbgPrint("Togger Device Control, BUT!!! NOT togger right control code!\n");
+        KdPrint(("Togger Device Control, BUT!!! NOT togger right control code!\n"));
         break;
     }
 
@@ -155,7 +172,6 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
     return status;
 }
 
-extern "C"
 NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
     UNREFERENCED_PARAMETER(RegistryPath);
@@ -170,7 +186,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryP
     PDEVICE_OBJECT pdevice = NULL;
 
     // 尝试创建设备
-    status = IoCreateDevice(DriverObject, 0, &deviceName, FILE_DEVICE_UNKNOWN, 0, TRUE, &pdevice);
+    status = IoCreateDevice(DriverObject, sizeof(GlobalVariables), &deviceName, FILE_DEVICE_UNKNOWN, 0, TRUE, &pdevice);
     if (!NT_SUCCESS(status))
     {
         return status;
@@ -194,13 +210,6 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryP
     DriverObject->MajorFunction[IRP_MJ_CLOSE] = DeviceClose;
     DriverObject->MajorFunction[IRP_MJ_READ] = DeviceRead;
     DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DeviceControl;
-
-    KdBreakPoint();
-    GlobalMemoryAllocator.Init();
-    KdBreakPoint();
-    pDetector = new PsActiveProcessTraversal();
-    //pDetector = new PsCidTableTraversal();
-    pDetector->Init(&GlobalMemoryAllocator);
 
     return STATUS_SUCCESS;
 }
