@@ -13,6 +13,7 @@ typedef struct _PspCidTableTraversal
 {
     StructStatus Status;
     PCHAR pHandle_Table;
+    //PCHAR pObjectTypeIndexTable;
     MemoryAllocator *pMemoryAllocator;
 } PspCidTableTraversal;
 

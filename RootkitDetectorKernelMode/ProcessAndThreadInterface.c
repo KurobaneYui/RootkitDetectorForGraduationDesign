@@ -8,19 +8,21 @@ StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS p
         return OUT_OF_RANGE;
 
     PUNICODE_STRING pUnicodeString =
-        (PUNICODE_STRING)((PCHAR)pInfoPosition + IMAGE_FILE_NAME_OFFSET_WIN7);
+        (PUNICODE_STRING)*(PULONG)((PCHAR)pInfoPosition + PROCESS_CREATE_INFO_OFFSET_WIN7);
 
     self->Info.length = sizeof(ProcessInfoPackage)
-        + (pUnicodeString->Length + 1) * sizeof(WCHAR);
+        + pUnicodeString->Length * sizeof(WCHAR);
     self->Info.type = 1;
     self->Info.pid = *(PULONG)((PCHAR)pInfoPosition + UNIQUE_PROCESS_ID_OFFSET_WIN7);
     self->Info.parentPid = *(PULONG)((PCHAR)pInfoPosition + INHERINT_PROCESS_ID_OFFSET_WIN7);
-    self->Info.path = (PCHAR)ExAllocatePoolWithTag(PagedPool, (pUnicodeString->Length + 1) * sizeof(WCHAR), ROOTKIT_DETECTOR_TAG);
+    self->Info.path = (PWCHAR)ExAllocatePoolWithTag(PagedPool, (pUnicodeString->Length + 1) * sizeof(WCHAR), ROOTKIT_DETECTOR_TAG);
     if (self->Info.path == NULL)
         return NO_MEMORY;
 
-    RtlZeroMemory(self->Info.path, (pUnicodeString->Length + 1) * sizeof(WCHAR));
-    wcsncpy((PWCHAR)self->Info.path, pUnicodeString->Buffer, pUnicodeString->Length);
+    RtlZeroMemory(self->Info.imageName, 16);
+    memcpy(self->Info.imageName, (PUCHAR)pInfoPosition + IMAGE_FILE_NAME_OFFSET_WIN7, 15);
+    RtlZeroMemory((PVOID)self->Info.path, (pUnicodeString->Length + 1) * sizeof(WCHAR));
+    wcsncpy(self->Info.path, pUnicodeString->Buffer, pUnicodeString->Length);
 
     self->Status = NORMAL;
 
@@ -59,7 +61,10 @@ StatusCode ProcessInfoPackager_WriteToBuff(ProcessInfoPackager *self, PCHAR cons
     if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    memcpy(buff, &self->Info, self->Info.length);
+    // 复制结构体部分
+    memcpy(buff, &self->Info, sizeof(ProcessInfoPackage));
+    // 复制路径宽字符串部分
+    memcpy(buff + sizeof(ProcessInfoPackage) - sizeof(PWCHAR), self->Info.path, self->Info.length - sizeof(ProcessInfoPackage));
 
     return SUCCESS;
 }
@@ -75,8 +80,8 @@ StatusCode ThreadInfoPackager_Init(ThreadInfoPackager *self, const PETHREAD pInf
     PCLIENT_ID pClientID = (PCLIENT_ID)((PCHAR)pInfoPosition + THREAD_CLINET_OFFSET_WIN7);
     self->Info.length = sizeof(ThreadInfoPackage);
     self->Info.type = 2;
-    self->Info.tid = *(PULONG)pClientID->UniqueThread;
-    self->Info.parentPid = *(PULONG)pClientID->UniqueProcess;
+    self->Info.tid = (ULONG)pClientID->UniqueThread;
+    self->Info.parentPid = (ULONG)pClientID->UniqueProcess;
 
     self->Status = NORMAL;
 

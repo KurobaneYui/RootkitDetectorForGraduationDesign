@@ -44,15 +44,24 @@ NTSTATUS DeviceCreate(PDEVICE_OBJECT Device_Object, PIRP pirp)
     UNREFERENCED_PARAMETER(Device_Object);
 
     NTSTATUS status = STATUS_SUCCESS;
+    StatusCode myFuncStatus = SUCCESS;
 
     GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
 
     pGlobal->togger = 0;
-    MemoryAllocator_Init(&pGlobal->GlobalMemoryAllocatorForList);
-    MemoryAllocator_Init(&pGlobal->GlobalMemoryAllocatorForTable);
+    myFuncStatus = MemoryAllocator_Init(&pGlobal->GlobalMemoryAllocatorForList);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
+    myFuncStatus = MemoryAllocator_Init(&pGlobal->GlobalMemoryAllocatorForTable);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
 
-    PsActiveProcessTraversal_Init(&pGlobal->psActiveProcessTraversal, &pGlobal->GlobalMemoryAllocatorForList);
-    PspCidTableTraversal_Init(&pGlobal->psCidTableTraversal, &pGlobal->GlobalMemoryAllocatorForTable);
+    myFuncStatus = PsActiveProcessTraversal_Init(&pGlobal->psActiveProcessTraversal, &pGlobal->GlobalMemoryAllocatorForList);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL; 
+    myFuncStatus = PspCidTableTraversal_Init(&pGlobal->psCidTableTraversal, &pGlobal->GlobalMemoryAllocatorForTable);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
 
     pirp->IoStatus.Status = status;
 
@@ -68,11 +77,16 @@ NTSTATUS DeviceCleanup(PDEVICE_OBJECT Device_Object, PIRP pirp)
     UNREFERENCED_PARAMETER(Device_Object);
 
     NTSTATUS status = STATUS_SUCCESS;
+    StatusCode myFuncStatus = SUCCESS;
 
     GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
 
-    PsActiveProcessTraversal_FreeupSnapshot(&pGlobal->psActiveProcessTraversal);
-    PspCidTableTraversal_FreeupSnapshot(&pGlobal->psCidTableTraversal);
+    myFuncStatus = PsActiveProcessTraversal_FreeupSnapshot(&pGlobal->psActiveProcessTraversal);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
+    myFuncStatus = PspCidTableTraversal_FreeupSnapshot(&pGlobal->psCidTableTraversal);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
 
     pirp->IoStatus.Status = status;
 
@@ -103,6 +117,7 @@ NTSTATUS DeviceRead(PDEVICE_OBJECT Device_Object, PIRP pirp)
     UNREFERENCED_PARAMETER(Device_Object);
 
     NTSTATUS status = STATUS_SUCCESS;
+    StatusCode myFuncStatus = SUCCESS;
 
     GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
 
@@ -115,9 +130,11 @@ NTSTATUS DeviceRead(PDEVICE_OBJECT Device_Object, PIRP pirp)
     ULONG realLength;
     RtlZeroMemory(readbuffer, readsize);
     if (pGlobal->togger == 0)
-        PsActiveProcessTraversal_GetInfos(&pGlobal->psActiveProcessTraversal, readbuffer, readsize, &realLength);
+        myFuncStatus = PsActiveProcessTraversal_GetInfos(&pGlobal->psActiveProcessTraversal, readbuffer, readsize, &realLength);
     else
-        PspCidTableTraversal_GetInfos(&pGlobal->psCidTableTraversal, readbuffer, readsize, &realLength);
+        myFuncStatus = PspCidTableTraversal_GetInfos(&pGlobal->psCidTableTraversal, readbuffer, readsize, &realLength);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
 
     pirp->IoStatus.Status = status;
 
@@ -135,6 +152,7 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
     KdBreakPoint();
 
     NTSTATUS status = STATUS_SUCCESS;
+    StatusCode myFuncStatus = SUCCESS;
 
     GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
 
@@ -148,13 +166,19 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
     case IOCTL_SNAPSHOT:
         KdPrint(("Togger Device Control to SNAPSHOT!\n"));
 
-        PsActiveProcessTraversal_Snapshot(&pGlobal->psActiveProcessTraversal);
-        PspCidTableTraversal_Snapshot(&pGlobal->psCidTableTraversal);
+        if (pGlobal->togger == 0)
+            myFuncStatus = PsActiveProcessTraversal_Snapshot(&pGlobal->psActiveProcessTraversal);
+        else
+            myFuncStatus = PspCidTableTraversal_Snapshot(&pGlobal->psCidTableTraversal);
 
         break;
     case IOCTL_SWITCH:
         KdPrint(("Togger Device Control to SWITCH!\n"));
         ((GlobalVariables*)Device_Object->DeviceExtension)->togger = ((GlobalVariables*)Device_Object->DeviceExtension)->togger == 0 ? 1 : 0;
+        if (pGlobal->togger == 1)
+            myFuncStatus = PsActiveProcessTraversal_FreeupSnapshot(&pGlobal->psActiveProcessTraversal);
+        else
+            myFuncStatus = PspCidTableTraversal_FreeupSnapshot(&pGlobal->psCidTableTraversal);
         break;
     default:
         status = STATUS_UNSUCCESSFUL;
@@ -162,6 +186,9 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
         KdPrint(("Togger Device Control, BUT!!! NOT togger right control code!\n"));
         break;
     }
+
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
 
     pirp->IoStatus.Status = status;
 
