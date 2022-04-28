@@ -6,7 +6,14 @@ StatusCode PspCidTableTraversal_Init(PspCidTableTraversal *self, MemoryAllocator
     if (pAllocator == NULL)
         return OUT_OF_RANGE;
 
+    //UNICODE_STRING funcName;
+    //RtlInitUnicodeString(&funcName, L"ObGetObjectType");
+    //PVOID ObGetObjectType = MmGetSystemRoutineAddress(&funcName);
+    //if (ObGetObjectType == NULL)
+    //    return UNKNOWN;
+
     self->pHandle_Table = (PCHAR)*(PULONG)((PCHAR)PsLookupProcessByProcessId + PSLOOKUPPROCESS_PSP_CID_TABLE_OFFSET_WIN7);
+    //self->pObjectTypeIndexTable = (PCHAR)*(PULONG)((PCHAR)ObGetObjectType + 0xF);
     self->pMemoryAllocator = pAllocator;
 
     self->Status = NORMAL;
@@ -33,14 +40,9 @@ StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, P
         for (ULONG i = 0; i < 4 * 1024 / 8; i++)
         {
             // if is EPROCESS
-            UNICODE_STRING funcName;
-            RtlInitUnicodeString(&funcName, L"ObGetObjectType");
-            POBJECT_TYPE(*ObGetObjectType) (PVOID);
-            ObGetObjectType = (POBJECT_TYPE(*)(PVOID))MmGetSystemRoutineAddress(&funcName);
-            if (ObGetObjectType == NULL)
-                return UNKNOWN;
-            int cmp = memcmp(PsProcessType, (PVOID)ObGetObjectType((PVOID)((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8)), 0x2E0);
-            if (cmp == 0)
+            PVOID pCurrentObject = ((PCHAR)((ULONG)pCurrentTable & ~0x07) + i * 8);
+            UCHAR currentObjectType = *(PUCHAR)((PCHAR)pCurrentObject - 0x18 + 0xC);
+            if (currentObjectType == (UCHAR)7)
             {
                 USHORT length;
                 PCHAR buff;
@@ -64,10 +66,11 @@ StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, P
                     ProcessInfoPackager_ClearAll(&infoPackager);
                     return tmp;
                 }
-                //KdPrint(("ProcessID:%u, ProcessPID:%u , Process:%ws", infoPackager.Info.pid, infoPackager.Info.parentPid, infoPackager.Info.path));
+                KdPrint(("ProcessID:%u, ProcessPID:%u, ProcessName:%s, Process:%ws\n", infoPackager.Info.pid, infoPackager.Info.parentPid, infoPackager.Info.imageName, infoPackager.Info.path));
                 ProcessInfoPackager_ClearAll(&infoPackager);
             }
-            else // if is ETHREAD
+            // if is ETHREAD
+            else if (currentObjectType == (UCHAR)8)
             {
                 USHORT length;
                 PCHAR buff;
@@ -91,8 +94,12 @@ StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, P
                     ThreadInfoPackager_ClearAll(&infoPackager);
                     return tmp;
                 }
-                //KdPrint(("ThreadID:%u, ThreadPID:%u", infoPackager.Info.tid, infoPackager.Info.parentPid));
+                KdPrint(("ThreadID:%u, ThreadPID:%u\n", infoPackager.Info.tid, infoPackager.Info.parentPid));
                 ThreadInfoPackager_ClearAll(&infoPackager);
+            }
+            else
+            {
+                KdPrint(("Object Type UNKNOWN, address is %u\n", (ULONG)pCurrentObject));
             }
         }
 

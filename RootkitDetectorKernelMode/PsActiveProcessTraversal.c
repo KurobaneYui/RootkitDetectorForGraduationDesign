@@ -59,7 +59,7 @@ StatusCode PsActiveProcessTraversal_Traversal(PsActiveProcessTraversal *self)
             ProcessInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        KdPrint(("ProcessID:%u, ProcessPID:%u , Process:%ws", infoPackager.Info.pid, infoPackager.Info.parentPid, infoPackager.Info.path));
+        KdPrint(("ProcessID:%u, ProcessPID:%u, ProcessName:%s, Process:%ws\n", infoPackager.Info.pid, infoPackager.Info.parentPid, infoPackager.Info.imageName, infoPackager.Info.path));
         ProcessInfoPackager_ClearAll(&infoPackager);
 
         PsActiveThreadTraversal threadTraversal;
@@ -74,8 +74,6 @@ StatusCode PsActiveProcessTraversal_Traversal(PsActiveProcessTraversal *self)
             return tmp;
 
         pCurrentList = pCurrentList->Flink;
-
-        return SUCCESS;
     }
 
     return SUCCESS;
@@ -162,12 +160,10 @@ StatusCode PsActiveThreadTraversal_Traversal(PsActiveThreadTraversal *self)
             ThreadInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        KdPrint(("ThreadID:%u, ThreadPID:%u", infoPackager.Info.tid, infoPackager.Info.parentPid));
+        KdPrint(("ThreadID:%u, ThreadPID:%u\n", infoPackager.Info.tid, infoPackager.Info.parentPid));
         ThreadInfoPackager_ClearAll(&infoPackager);
 
         pCurrentList = pCurrentList->Flink;
-
-        return SUCCESS;
     }
 
     return SUCCESS;
