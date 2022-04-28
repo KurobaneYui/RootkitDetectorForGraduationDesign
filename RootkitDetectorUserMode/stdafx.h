@@ -13,6 +13,8 @@
 #include <Windows.h>
 #include <winioctl.h>
 #include <CommonHeader.h>
+#include "ProcessTree.h"
+#include "DriverCommunicator.h"
 
 
 

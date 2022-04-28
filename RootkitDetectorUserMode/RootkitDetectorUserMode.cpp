@@ -8,32 +8,13 @@ using std::endl;
 
 int main()
 {
-    HANDLE HDevice = NULL;
-    CHAR buff[1024] = { 0 };
-    DWORD readlen = 0;
+    ProcessTree tree = ProcessTree();
+    DriverCommunicator Connector2Device = DriverCommunicator(1024 * 1024);
 
-    system("pause");
+    Connector2Device.Snapshot();
+    Connector2Device.SwitchDetector(1);
+    Connector2Device.GetInfo(tree);
 
-    HDevice = CreateFile((LPCWSTR)L"\\\\.\\RootkitDetectorDevice", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (HDevice == INVALID_HANDLE_VALUE)
-    {
-        printf("Create Handle Failure");
-
-        system("pause");
-        return -1;
-    }
-    printf("Handle Create successfully");
-    system("pause");
-
-    ReadFile(HDevice, (PVOID)buff, 1024, &readlen, NULL);
-    cout << buff << ' ' << readlen << endl;
-    system("pause");
-
-    DeviceIoControl(HDevice, IOCTL_SNAPSHOT, /*&input*/NULL, 4, /*&output*/NULL, 4, &readlen, NULL);
-    system("pause");
-
-    CloseHandle(HDevice);
     system("pause");
 
     return 0;
