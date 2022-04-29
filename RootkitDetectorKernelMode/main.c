@@ -102,6 +102,22 @@ NTSTATUS DeviceClose(PDEVICE_OBJECT Device_Object, PIRP pirp)
     UNREFERENCED_PARAMETER(Device_Object);
 
     NTSTATUS status = STATUS_SUCCESS;
+    StatusCode myFuncStatus = SUCCESS;
+
+    GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
+
+    myFuncStatus = PsActiveProcessTraversal_ClearAll(&pGlobal->psActiveProcessTraversal);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
+    myFuncStatus = PspCidTableTraversal_ClearAll(&pGlobal->psCidTableTraversal);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
+    myFuncStatus = MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForList);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
+    myFuncStatus = MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForTable);
+    if (myFuncStatus != SUCCESS)
+        status = STATUS_UNSUCCESSFUL;
 
     pirp->IoStatus.Status = status;
 

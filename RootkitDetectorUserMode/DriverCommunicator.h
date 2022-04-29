@@ -4,7 +4,7 @@
 class DriverCommunicator
 {
 private:
-    UINT16 BufferLength;
+    UINT BufferLength;
     HANDLE DetectorDevice{};
     PCHAR Buffer{};
     DWORD ReadLength{};
@@ -18,7 +18,7 @@ private:
     StatusCode Append2ProcessTree(ProcessTree &PT);
 
 public:
-    DriverCommunicator(UINT16 bufferLength);
+    DriverCommunicator(UINT bufferLength);
     ~DriverCommunicator();
     StatusCode SwitchDetector(UCHAR id);
     StatusCode Snapshot();

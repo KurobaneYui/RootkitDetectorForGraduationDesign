@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "DriverCommunicator.h"
 
-DriverCommunicator::DriverCommunicator(UINT16 bufferLength)
+DriverCommunicator::DriverCommunicator(UINT bufferLength)
 {
     Status = DEVICE_NOT_OPENED;
     BufferLength = bufferLength;
@@ -61,7 +61,7 @@ StatusCode DriverCommunicator::GetInfo(ProcessTree &PT)
     if (Status != DEVICE_OPENED)
         return UNKNOWN;
 
-    bool readStatus{};
+    BOOL readStatus{};
     do
     {
         readStatus = ReadFile(DetectorDevice, (PVOID)Buffer, BufferLength, &ReadLength, NULL);

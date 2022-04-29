@@ -9,10 +9,10 @@ using std::endl;
 int main()
 {
     ProcessTree tree = ProcessTree();
-    DriverCommunicator Connector2Device = DriverCommunicator(1024 * 1024);
+    DriverCommunicator Connector2Device = DriverCommunicator(1024 * 256);
 
+    //Connector2Device.SwitchDetector(1);
     Connector2Device.Snapshot();
-    Connector2Device.SwitchDetector(1);
     Connector2Device.GetInfo(tree);
 
     system("pause");
