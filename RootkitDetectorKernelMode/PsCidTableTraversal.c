@@ -99,7 +99,7 @@ StatusCode PspCidTableTraversal_RecursiveTraversal(PspCidTableTraversal *self, P
             }
             else
             {
-                KdPrint(("Object Type UNKNOWN, address is %u\n", (ULONG)pCurrentObject));
+                //KdPrint(("Object Type UNKNOWN, address is %u\n", (ULONG)pCurrentObject));
             }
         }
 
