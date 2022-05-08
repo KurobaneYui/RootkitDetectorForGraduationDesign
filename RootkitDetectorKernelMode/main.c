@@ -106,16 +106,16 @@ NTSTATUS DeviceClose(PDEVICE_OBJECT Device_Object, PIRP pirp)
 
     GlobalVariables *pGlobal = (GlobalVariables*)Device_Object->DeviceExtension;
 
-    myFuncStatus = PsActiveProcessTraversal_ClearAll(&pGlobal->psActiveProcessTraversal);
+    myFuncStatus = PsActiveProcessTraversal_FreeupSnapshot(&pGlobal->psActiveProcessTraversal);
     if (myFuncStatus != SUCCESS)
         status = STATUS_UNSUCCESSFUL;
-    myFuncStatus = PspCidTableTraversal_ClearAll(&pGlobal->psCidTableTraversal);
+    myFuncStatus = PspCidTableTraversal_FreeupSnapshot(&pGlobal->psCidTableTraversal);
     if (myFuncStatus != SUCCESS)
         status = STATUS_UNSUCCESSFUL;
-    myFuncStatus = MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForList);
+    myFuncStatus = MemoryAllocator_FreeAllBuff(&pGlobal->GlobalMemoryAllocatorForList);
     if (myFuncStatus != SUCCESS)
         status = STATUS_UNSUCCESSFUL;
-    myFuncStatus = MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForTable);
+    myFuncStatus = MemoryAllocator_FreeAllBuff(&pGlobal->GlobalMemoryAllocatorForTable);
     if (myFuncStatus != SUCCESS)
         status = STATUS_UNSUCCESSFUL;
 
