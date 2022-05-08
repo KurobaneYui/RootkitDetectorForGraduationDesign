@@ -11,17 +11,19 @@ StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS p
         (PUNICODE_STRING)*(PULONG)((PCHAR)pInfoPosition + PROCESS_CREATE_INFO_OFFSET_WIN7);
 
     self->Info.length = sizeof(ProcessInfoPackage)
-        + pUnicodeString->Length * sizeof(WCHAR);
+        - sizeof(char16_t*)
+        + pUnicodeString->Length
+        + sizeof(char16_t);
     self->Info.type = 1;
     self->Info.pid = *(PULONG)((PCHAR)pInfoPosition + UNIQUE_PROCESS_ID_OFFSET_WIN7);
     self->Info.parentPid = *(PULONG)((PCHAR)pInfoPosition + INHERINT_PROCESS_ID_OFFSET_WIN7);
-    self->Info.path = (PWCHAR)ExAllocatePoolWithTag(PagedPool, (pUnicodeString->Length + 1) * sizeof(WCHAR), ROOTKIT_DETECTOR_TAG);
+    self->Info.path = (PWCHAR)ExAllocatePoolWithTag(PagedPool, pUnicodeString->Length + sizeof(char16_t), ROOTKIT_DETECTOR_TAG);
     if (self->Info.path == NULL)
         return NO_MEMORY;
 
     RtlZeroMemory(self->Info.imageName, 16);
     memcpy(self->Info.imageName, (PUCHAR)pInfoPosition + IMAGE_FILE_NAME_OFFSET_WIN7, 15);
-    RtlZeroMemory((PVOID)self->Info.path, (pUnicodeString->Length + 1) * sizeof(WCHAR));
+    RtlZeroMemory((PVOID)self->Info.path, pUnicodeString->Length + sizeof(char16_t));
     wcsncpy(self->Info.path, pUnicodeString->Buffer, pUnicodeString->Length);
 
     self->Status = NORMAL;
@@ -61,10 +63,10 @@ StatusCode ProcessInfoPackager_WriteToBuff(ProcessInfoPackager *self, PCHAR cons
     if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    // ¸´ÖÆ½á¹¹Ìå²¿·Ö
-    memcpy(buff, &self->Info, sizeof(ProcessInfoPackage));
-    // ¸´ÖÆÂ·¾¶¿í×Ö·û´®²¿·Ö
-    memcpy(buff + sizeof(ProcessInfoPackage) - sizeof(PWCHAR), self->Info.path, self->Info.length - sizeof(ProcessInfoPackage));
+    // ï¿½ï¿½ï¿½Æ½á¹¹ï¿½å²¿ï¿½ï¿½
+    memcpy(buff, &self->Info, sizeof(ProcessInfoPackage) - sizeof(char16_t *));
+    // ï¿½ï¿½ï¿½ï¿½Â·ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    memcpy(buff + sizeof(ProcessInfoPackage) - sizeof(char16_t *), self->Info.path, self->Info.length - sizeof(ProcessInfoPackage) + sizeof(char16_t *));
 
     return SUCCESS;
 }

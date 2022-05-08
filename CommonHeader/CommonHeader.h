@@ -1,11 +1,11 @@
 #pragma once
 // This header file is for Driver and User Application
-#include <wchar.h>
+#include <uchar.h>
 
 #define IOCTL_SNAPSHOT CTL_CODE(FILE_DEVICE_UNKNOWN,0x9831,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SWITCH CTL_CODE(FILE_DEVICE_UNKNOWN,0x9832,METHOD_BUFFERED,FILE_ANY_ACCESS)
 
-// At least 32 bytes -- 2*sizeof(USHORT)+2*sizeof(LONG)+16*sizeof(unsigned char)+sizeof(wchar_t). If path is NULL, never copy to user layer
+// At least 30 bytes -- 2*sizeof(USHORT)+2*sizeof(LONG)+16*sizeof(unsigned char)+sizeof(char16_t). If path is NULL, never copy to user layer
 typedef struct _ProcessInfoPackage
 {
     unsigned short length; // In byte
@@ -13,7 +13,7 @@ typedef struct _ProcessInfoPackage
     unsigned long pid;
     unsigned long parentPid;
     unsigned char imageName[16];
-    wchar_t *path; // At the end of string must be '\0'. it's '\0', if no charactor in it
+    char16_t *path; // At the end of string must be '\0'. it's '\0', if no charactor in it
 } ProcessInfoPackage;
 
 // 12 bytes -- 3*sizeof(LONG)
