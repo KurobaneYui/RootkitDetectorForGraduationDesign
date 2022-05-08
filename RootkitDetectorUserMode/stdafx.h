@@ -10,11 +10,16 @@
 #include <stdio.h>
 #include <tchar.h>
 #include <iostream>
+#include <WinSock2.h>
+#include <WS2tcpip.h>
 #include <Windows.h>
 #include <winioctl.h>
+#include <cwchar>
+#include <clocale>
 #include <CommonHeader.h>
 #include "ProcessTree.h"
 #include "DriverCommunicator.h"
+#include "ServerCommunicator.h"
 
 
 
