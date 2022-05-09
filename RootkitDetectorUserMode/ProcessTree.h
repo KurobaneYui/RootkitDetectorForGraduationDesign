@@ -1,10 +1,4 @@
 #pragma once
-#include "stdafx.h"
-#include <map>
-#include <string>
-#include <set>
-#include <vector>
-#include <iostream>
 
 class ProcessTree
 {

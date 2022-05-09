@@ -1,7 +1,4 @@
-﻿#include <ntifs.h>
-#include <ntddk.h>
-#include <wdm.h>
-#include <CommonHeader.h>
+﻿#include <CommonHeader.h>
 #include <MemAllocatorRootkit.h>
 #include <ProcessAndThreadInterface.h>
 #include <PsActiveProcessTraversal.h>

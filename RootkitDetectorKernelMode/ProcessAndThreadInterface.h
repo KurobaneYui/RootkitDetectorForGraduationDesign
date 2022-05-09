@@ -1,10 +1,6 @@
 #pragma once
-
-#include <ntifs.h>
-#include <ntddk.h>
-#include <wdm.h>
-#include "CommonHeader.h"
-#include "MemAllocatorRootkit.h"
+#include <CommonHeader.h>
+#include <MemAllocatorRootkit.h>
 
 #define EPROCESS_LIST_OFFSET_WIN7 0x0b8
 #define UNIQUE_PROCESS_ID_OFFSET_WIN7 0x0b4

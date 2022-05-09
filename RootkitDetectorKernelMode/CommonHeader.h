@@ -1,6 +1,8 @@
 #pragma once
 // This header file is for Driver and User Application
+#include <ntifs.h>
 #include <ntddk.h>
+#include <wdm.h>
 
 #define IOCTL_SNAPSHOT CTL_CODE(FILE_DEVICE_UNKNOWN,0x9831,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SWITCH CTL_CODE(FILE_DEVICE_UNKNOWN,0x9832,METHOD_BUFFERED,FILE_ANY_ACCESS)

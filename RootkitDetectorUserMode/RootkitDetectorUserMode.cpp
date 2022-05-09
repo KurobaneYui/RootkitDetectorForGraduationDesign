@@ -17,9 +17,9 @@ int main()
     //Connector2Device.Snapshot();
     //Connector2Device.GetInfo(tree);
 
-    ServerCommunicator testConnector = ServerCommunicator();
+    /*ServerCommunicator testConnector = ServerCommunicator();
     bool status;
-    testConnector.Authorize(1322, 3456666, status);
+    testConnector.Authorize(1322, 3456666, status);*/
 
     system("pause");
 

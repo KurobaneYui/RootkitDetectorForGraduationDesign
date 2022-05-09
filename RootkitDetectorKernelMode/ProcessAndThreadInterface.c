@@ -1,4 +1,4 @@
-#include "ProcessAndThreadInterface.h"
+#include <ProcessAndThreadInterface.h>
 
 StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS pInfoPosition)
 {
