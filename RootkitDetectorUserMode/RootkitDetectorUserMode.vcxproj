@@ -159,6 +159,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CommonHeader.cpp" />
     <ClCompile Include="DriverCommunicator.cpp" />
     <ClCompile Include="ProcessTree.cpp" />
     <ClCompile Include="RootkitDetectorUserMode.cpp" />

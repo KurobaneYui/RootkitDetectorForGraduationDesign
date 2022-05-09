@@ -29,8 +29,22 @@ DriverCommunicator::~DriverCommunicator()
 }
 
 StatusCode DriverCommunicator::Append2ProcessTree(ProcessTree &PT)
-{// TODO: Change temp code to real one
-    ProcessTree::PrintInfos(Buffer, ReadLength);
+{
+    ULONG pointer{ 0 };
+    StatusCode getStatus{ SUCCESS };
+    while (pointer < ReadLength)
+    {
+        if (((ThreadInfoPackage*)(Buffer + pointer))->type == 1)
+            getStatus = ProcessTree::AddProcess((ProcessInfoPackage*)(Buffer + pointer), pointer);
+        else if (((ThreadInfoPackage*)(Buffer + pointer))->type == 2)
+            getStatus = ProcessTree::AddThread((ThreadInfoPackage*)(Buffer + pointer), pointer);
+        else
+            return UNKNOWN;
+
+        if (getStatus != SUCCESS)
+            return getStatus;
+    }
+
     return SUCCESS;
 }
 

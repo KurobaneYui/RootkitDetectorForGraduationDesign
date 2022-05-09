@@ -53,5 +53,8 @@
     <ClCompile Include="ServerCommunicator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CommonHeader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

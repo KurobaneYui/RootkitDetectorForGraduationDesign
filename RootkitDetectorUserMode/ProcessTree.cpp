@@ -3,6 +3,8 @@
 
 using namespace std;
 
+std::map<ULONG, ProcessTree*> ProcessTree::ProcessRecords = std::map<ULONG, ProcessTree*>();
+
 ProcessTree::ProcessTree(ULONG pid)
 {
     Status = NOT_ACCOMPLISHED;
