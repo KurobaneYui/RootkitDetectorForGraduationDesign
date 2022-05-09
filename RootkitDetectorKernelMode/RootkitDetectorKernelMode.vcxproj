@@ -147,7 +147,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\CommonHeader\CommonHeader.h" />
+    <ClInclude Include="CommonHeader.h" />
     <ClInclude Include="MemAllocatorRootkit.h" />
     <ClInclude Include="ProcessAndThreadInterface.h" />
     <ClInclude Include="PsActiveProcessTraversal.h" />

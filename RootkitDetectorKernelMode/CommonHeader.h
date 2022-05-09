@@ -1,6 +1,6 @@
 #pragma once
 // This header file is for Driver and User Application
-#include <uchar.h>
+#include <ntddk.h>
 
 #define IOCTL_SNAPSHOT CTL_CODE(FILE_DEVICE_UNKNOWN,0x9831,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define IOCTL_SWITCH CTL_CODE(FILE_DEVICE_UNKNOWN,0x9832,METHOD_BUFFERED,FILE_ANY_ACCESS)
@@ -13,7 +13,7 @@ typedef struct _ProcessInfoPackage
     unsigned long pid;
     unsigned long parentPid;
     unsigned char imageName[16];
-    char16_t *path; // At the end of string must be '\0'. it's '\0', if no charactor in it
+    PWCHAR path; // At the end of string must be '\0'. it's '\0', if no charactor in it
 } ProcessInfoPackage;
 
 // 12 bytes -- 3*sizeof(LONG)

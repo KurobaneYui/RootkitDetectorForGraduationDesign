@@ -19,9 +19,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\CommonHeader\CommonHeader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MemAllocatorRootkit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -32,6 +29,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PsCidTableTraversal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonHeader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
