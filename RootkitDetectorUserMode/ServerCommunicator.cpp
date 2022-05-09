@@ -109,6 +109,9 @@ StatusCode ServerCommunicator::SendData(PVOID buffer, UINT bufferLength)
     if (Status != AUTHORIZED)
         return UNKNOWN;
 
+    if (buffer == nullptr)
+        return OUT_OF_RANGE;
+
     if (send(ServerConnector, (PCHAR)buffer, bufferLength, 0) == SOCKET_ERROR)
     {
         Status = ERROR_OCCUR;
