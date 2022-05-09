@@ -15,6 +15,7 @@
 #include <Windows.h>
 #include <winioctl.h>
 #include <cwchar>
+#include <cuchar>
 #include <clocale>
 #include "CommonHeader.h"
 #include "ProcessTree.h"
