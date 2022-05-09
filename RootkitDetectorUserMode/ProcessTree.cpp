@@ -148,16 +148,20 @@ StatusCode ProcessTree::AddThread(ThreadInfoPackage &package)
 }
 
 StatusCode ProcessTree::SendSelf(ServerCommunicator &serverCommunicator)
-{// TODO: change data from host byte order to network byte order
+{
     if (Status != NORMAL)
         return UNKNOWN;
 
+    htonProcessInfoPackage(Info);
     serverCommunicator.SendData(&Info, sizeof(Info) - sizeof(char16_t*));
     serverCommunicator.SendData(Info.path, Info.length - sizeof(Info) + sizeof(char16_t*));
+    ntohProcessInfoPackage(Info);
 
     for (auto i : ThreadRecord)
     {
+        htonThreadInfoPackage(i);
         serverCommunicator.SendData(&i, i.length);
+        ntohThreadInfoPackage(i);
     }
 
     return SUCCESS;
