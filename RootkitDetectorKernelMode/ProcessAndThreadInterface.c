@@ -11,19 +11,19 @@ StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS p
         (PUNICODE_STRING)*(PULONG)((PCHAR)pInfoPosition + PROCESS_CREATE_INFO_OFFSET_WIN7);
 
     self->Info.length = sizeof(ProcessInfoPackage)
-        - sizeof(char16_t*)
+        - sizeof(PWCHAR)
         + pUnicodeString->Length
-        + sizeof(char16_t);
+        + sizeof(WCHAR);
     self->Info.type = 1;
     self->Info.pid = *(PULONG)((PCHAR)pInfoPosition + UNIQUE_PROCESS_ID_OFFSET_WIN7);
     self->Info.parentPid = *(PULONG)((PCHAR)pInfoPosition + INHERINT_PROCESS_ID_OFFSET_WIN7);
-    self->Info.path = (PWCHAR)ExAllocatePoolWithTag(PagedPool, pUnicodeString->Length + sizeof(char16_t), ROOTKIT_DETECTOR_TAG);
+    self->Info.path = (PWCHAR)ExAllocatePoolWithTag(PagedPool, pUnicodeString->Length + sizeof(WCHAR), ROOTKIT_DETECTOR_TAG);
     if (self->Info.path == NULL)
         return NO_MEMORY;
 
     RtlZeroMemory(self->Info.imageName, 16);
     memcpy(self->Info.imageName, (PUCHAR)pInfoPosition + IMAGE_FILE_NAME_OFFSET_WIN7, 15);
-    RtlZeroMemory((PVOID)self->Info.path, pUnicodeString->Length + sizeof(char16_t));
+    RtlZeroMemory((PVOID)self->Info.path, pUnicodeString->Length + sizeof(WCHAR));
     wcsncpy(self->Info.path, pUnicodeString->Buffer, pUnicodeString->Length);
 
     self->Status = NORMAL;
@@ -63,10 +63,10 @@ StatusCode ProcessInfoPackager_WriteToBuff(ProcessInfoPackager *self, PCHAR cons
     if (self->Status == DESTROYED)
         return HAVE_DESTROYED;
 
-    // ���ƽṹ�岿��
-    memcpy(buff, &self->Info, sizeof(ProcessInfoPackage) - sizeof(char16_t *));
-    // ����·�����ַ�������
-    memcpy(buff + sizeof(ProcessInfoPackage) - sizeof(char16_t *), self->Info.path, self->Info.length - sizeof(ProcessInfoPackage) + sizeof(char16_t *));
+    // 拷贝进程主体信息
+    memcpy(buff, &self->Info, sizeof(ProcessInfoPackage) - sizeof(PWCHAR));
+    // 拷贝进程创建路径
+    memcpy(buff + sizeof(ProcessInfoPackage) - sizeof(PWCHAR), self->Info.path, self->Info.length - sizeof(ProcessInfoPackage) + sizeof(PWCHAR));
 
     return SUCCESS;
 }
