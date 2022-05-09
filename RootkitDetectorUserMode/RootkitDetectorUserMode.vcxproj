@@ -151,7 +151,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\CommonHeader\CommonHeader.h" />
+    <ClInclude Include="CommonHeader.h" />
     <ClInclude Include="DriverCommunicator.h" />
     <ClInclude Include="ProcessTree.h" />
     <ClInclude Include="ServerCommunicator.h" />

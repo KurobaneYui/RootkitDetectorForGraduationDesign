@@ -16,7 +16,7 @@
 #include <winioctl.h>
 #include <cwchar>
 #include <clocale>
-#include <CommonHeader.h>
+#include "CommonHeader.h"
 #include "ProcessTree.h"
 #include "DriverCommunicator.h"
 #include "ServerCommunicator.h"
