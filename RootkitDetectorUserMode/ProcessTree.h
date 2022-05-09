@@ -27,9 +27,10 @@ public:
     static ProcessTree* GetRoot();
     static StatusCode AddProcess(ProcessInfoPackage *buffer, ULONG &pointer);
     static StatusCode AddThread(ThreadInfoPackage *buffer, ULONG &pointer);
+    static StatusCode SendInfo(ServerCommunicator &serverCommunicator);
+    //static StatusCode PrintInfos();
     bool IsNotAccomplished();
     StatusCode ComplishProcessTree(ProcessInfoPackage *buffer);
     StatusCode AddThread(ThreadInfoPackage &package);
-    StatusCode SendInfo();
-    StatusCode PrintInfos();
+    StatusCode SendSelf(ServerCommunicator &serverCommunicator);
 };

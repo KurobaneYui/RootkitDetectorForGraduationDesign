@@ -90,10 +90,24 @@ StatusCode ProcessTree::AddThread(ThreadInfoPackage *buffer, ULONG &pointer)
         return pProcess->AddThread(pack);
     }
     else
-    { 
+    {
         // add thread
         return parentProcess->second->AddThread(pack);
     }
+}
+
+StatusCode ProcessTree::SendInfo(ServerCommunicator &serverCommunicator)
+{
+    for (auto i : ProcessRecords)
+    {
+        if (i.second->IsNotAccomplished())
+            return UNKNOWN;
+
+        if (i.second->SendSelf(serverCommunicator) != SUCCESS)
+            return UNKNOWN;
+    }
+
+    return SUCCESS;
 }
 
 bool ProcessTree::IsNotAccomplished()
@@ -133,10 +147,21 @@ StatusCode ProcessTree::AddThread(ThreadInfoPackage &package)
     return SUCCESS;
 }
 
-// StatusCode ProcessTree::SendInfo()
-// {
-//     ;
-// }
+StatusCode ProcessTree::SendSelf(ServerCommunicator &serverCommunicator)
+{// TODO: change data from host byte order to network byte order
+    if (Status != NORMAL)
+        return UNKNOWN;
+
+    serverCommunicator.SendData(&Info, sizeof(Info) - sizeof(char16_t*));
+    serverCommunicator.SendData(Info.path, Info.length - sizeof(Info) + sizeof(char16_t*));
+
+    for (auto i : ThreadRecord)
+    {
+        serverCommunicator.SendData(&i, i.length);
+    }
+
+    return SUCCESS;
+}
 
 // StatusCode ProcessTree::PrintInfos(PCHAR buff, DWORD bufferLength)
 // {
