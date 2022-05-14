@@ -23,10 +23,13 @@ void myUnload(_In_ PDRIVER_OBJECT DriverObject)
     if (DriverObject->DeviceObject)
     {
         GlobalVariables *pGlobal = (GlobalVariables*)DriverObject->DeviceObject->DeviceExtension;
-        PsActiveProcessTraversal_ClearAll(&pGlobal->psActiveProcessTraversal);
-        PspCidTableTraversal_ClearAll(&pGlobal->psCidTableTraversal);
-        MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForList);
-        MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForTable);
+        if (pGlobal->togger != -1)
+        {
+            PsActiveProcessTraversal_ClearAll(&pGlobal->psActiveProcessTraversal);
+            PspCidTableTraversal_ClearAll(&pGlobal->psCidTableTraversal);
+            MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForList);
+            MemoryAllocator_CleanAll(&pGlobal->GlobalMemoryAllocatorForTable);
+        }
 
         UNICODE_STRING symbolicName = RTL_CONSTANT_STRING(SYMBOLIC_NAME);
         IoDeleteSymbolicLink(&symbolicName);
@@ -162,8 +165,6 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
 {
     UNREFERENCED_PARAMETER(Device_Object);
 
-    KdBreakPoint();
-
     NTSTATUS status = STATUS_SUCCESS;
     StatusCode myFuncStatus = SUCCESS;
 
@@ -189,9 +190,15 @@ NTSTATUS DeviceControl(PDEVICE_OBJECT Device_Object, PIRP pirp)
         KdPrint(("Togger Device Control to SWITCH!\n"));
         ((GlobalVariables*)Device_Object->DeviceExtension)->togger = ((GlobalVariables*)Device_Object->DeviceExtension)->togger == 0 ? 1 : 0;
         if (pGlobal->togger == 1)
+        {
             myFuncStatus = PsActiveProcessTraversal_FreeupSnapshot(&pGlobal->psActiveProcessTraversal);
+            KdPrint(("\tCid Table Traversal\n"));
+        }
         else
+        {
             myFuncStatus = PspCidTableTraversal_FreeupSnapshot(&pGlobal->psCidTableTraversal);
+            KdPrint(("\tActive Process Link Traversal\n"));
+        }
         break;
     default:
         status = STATUS_UNSUCCESSFUL;
@@ -231,6 +238,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryP
     {
         return status;
     }
+    ((GlobalVariables*)DriverObject->DeviceObject->DeviceExtension)->togger = -1;
     pdevice->Flags |= DO_BUFFERED_IO;
     // 设备创建成功
 

@@ -4,8 +4,9 @@ class ProcessTree
 {
 private:
     static std::map<ULONG, ProcessTree*> ProcessRecords;
-    ProcessInfoPackage Info;
-    std::set<ThreadInfoPackage> ThreadRecord;
+    ProcessInfoPackage Info[3]{};
+    std::set<ThreadInfoPackage> ThreadRecord{};
+    bool source[3]{false, false, false};
     enum
     {
         NORMAL,
@@ -15,16 +16,19 @@ private:
 
 public:
     ProcessTree(ULONG pid);
-    ProcessTree(ProcessInfoPackage* buffer);
     ~ProcessTree();
     static void ClearAll();
     static ProcessTree* GetRoot();
-    static StatusCode AddProcess(ProcessInfoPackage *buffer, ULONG &pointer);
+    static StatusCode AddProcess(ProcessInfoPackage *buffer, ULONG &pointer, int sourceID);
+    static StatusCode AddProcess(PROCESSENTRY32 &proc, int sourceID);
     static StatusCode AddThread(ThreadInfoPackage *buffer, ULONG &pointer);
     static StatusCode SendInfo(ServerCommunicator &serverCommunicator);
-    //static StatusCode PrintInfos();
+    static StatusCode PrintInfos();
+    bool IsNotAccomplished(int sourceID);
     bool IsNotAccomplished();
-    StatusCode ComplishProcessTree(ProcessInfoPackage *buffer);
+    StatusCode ComplishProcessTree(ProcessInfoPackage *buffer, int sourceID);
+    StatusCode ComplishProcessTree(PROCESSENTRY32 &proc, int sourceID);
     StatusCode AddThread(ThreadInfoPackage &package);
     StatusCode SendSelf(ServerCommunicator &serverCommunicator);
+    StatusCode PrintSelf(ULONG pid);
 };

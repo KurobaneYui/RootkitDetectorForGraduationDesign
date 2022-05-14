@@ -80,7 +80,10 @@ StatusCode ServerCommunicator::Authorize(UINT32 userID, UINT32 token, bool &stat
     }
 
     status = (buff[0] == 1);
-    Status = AUTHORIZED;
+	if (status)
+		Status = AUTHORIZED;
+	else
+		Status = CONNECTION_ESTABLISHED;
     return SUCCESS;
 }
 
@@ -101,6 +104,8 @@ StatusCode ServerCommunicator::ReceiveControlSignal(ControlSignal &controlSignal
     }
 
     controlSignal = (ControlSignal)control;
+	char tmp = 1;
+	SendData(&tmp, 1);
     return SUCCESS;
 }
 

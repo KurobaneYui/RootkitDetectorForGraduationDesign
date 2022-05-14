@@ -20,6 +20,7 @@
 #include <WS2tcpip.h>
 #include <Windows.h>
 #include <winioctl.h>
+#include <TlHelp32.h>
 #include "CommonHeader.h"
 #include "ServerCommunicator.h"
 #include "ProcessTree.h"

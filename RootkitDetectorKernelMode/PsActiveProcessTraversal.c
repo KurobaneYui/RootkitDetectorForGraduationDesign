@@ -160,7 +160,7 @@ StatusCode PsActiveThreadTraversal_Traversal(PsActiveThreadTraversal *self)
             ThreadInfoPackager_ClearAll(&infoPackager);
             return tmp;
         }
-        //KdPrint(("ThreadID:%u, ThreadPID:%u\n", infoPackager.Info.tid, infoPackager.Info.parentPid));
+        KdPrint(("ThreadID:%u, ThreadPID:%u\n", infoPackager.Info.tid, infoPackager.Info.parentPid));
         ThreadInfoPackager_ClearAll(&infoPackager);
 
         pCurrentList = pCurrentList->Flink;

@@ -9,6 +9,8 @@ StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS p
 
     PUNICODE_STRING pUnicodeString =
         (PUNICODE_STRING)*(PULONG)((PCHAR)pInfoPosition + PROCESS_CREATE_INFO_OFFSET_WIN7);
+    if (pUnicodeString == NULL)
+        return OUT_OF_RANGE;
 
     self->Info.length = sizeof(ProcessInfoPackage)
         - sizeof(PWCHAR)
@@ -24,7 +26,7 @@ StatusCode ProcessInfoPackager_Init(ProcessInfoPackager *self, const PEPROCESS p
     RtlZeroMemory(self->Info.imageName, 16);
     memcpy(self->Info.imageName, (PUCHAR)pInfoPosition + IMAGE_FILE_NAME_OFFSET_WIN7, 15);
     RtlZeroMemory((PVOID)self->Info.path, pUnicodeString->Length + sizeof(WCHAR));
-    wcsncpy(self->Info.path, pUnicodeString->Buffer, pUnicodeString->Length);
+    memcpy(self->Info.path, pUnicodeString->Buffer, pUnicodeString->Length);
 
     self->Status = NORMAL;
 

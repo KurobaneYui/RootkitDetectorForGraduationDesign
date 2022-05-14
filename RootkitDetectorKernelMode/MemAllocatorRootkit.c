@@ -121,8 +121,8 @@ StatusCode MemoryAllocator_ReadBuff(MemoryAllocator* self, PCHAR buff, const ULO
         {
             memcpy(buff + accumulate, self->PrimaryBuffIndex[self->ReadIndex.index] + self->ReadIndex.offset, userLeftLength);
             accumulate += userLeftLength;
-            userLeftLength = 0;
             self->ReadIndex.offset += userLeftLength;
+			userLeftLength = 0;
             if (self->ReadIndex.offset == self->BuffAlreadyUsedSpace[self->ReadIndex.index])
             {
                 self->ReadIndex.index++;

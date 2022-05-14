@@ -12,21 +12,12 @@ ProcessTree::ProcessTree(ULONG pid)
     ProcessRecords.insert(pair<ULONG, ProcessTree *>(pid, this));
 }
 
-ProcessTree::ProcessTree(ProcessInfoPackage *buffer)
-{
-    Info = *buffer;
-    USHORT pathLengthTmp = (Info.length - sizeof(ProcessInfoPackage) + sizeof(char16_t *)) / sizeof(char16_t);
-    char16_t *tmp = new char16_t[pathLengthTmp];
-    Info.path = tmp;
-    memcpy(Info.path, &buffer->path, pathLengthTmp * sizeof(char16_t));
-    Status = NORMAL;
-    ProcessRecords.insert(pair<ULONG, ProcessTree *>(Info.pid, this));
-}
-
 ProcessTree::~ProcessTree()
 {
     if (Status != NOT_ACCOMPLISHED)
-        delete[] Info.path;
+        for(auto i : Info)
+            if(i.path != nullptr)
+                delete[] i.path;
 }
 
 void ProcessTree::ClearAll()
@@ -46,7 +37,7 @@ ProcessTree *ProcessTree::GetRoot()
     return nullptr;
 }
 
-StatusCode ProcessTree::AddProcess(ProcessInfoPackage *buffer, ULONG &pointer)
+StatusCode ProcessTree::AddProcess(ProcessInfoPackage *buffer, ULONG &pointer, int sourceID)
 {
     // check parameters
     if (buffer == nullptr)
@@ -60,18 +51,38 @@ StatusCode ProcessTree::AddProcess(ProcessInfoPackage *buffer, ULONG &pointer)
     if (process == ProcessRecords.end())
     {
         // create new process
-        ProcessTree *newProcess = new ProcessTree(buffer);
+        ProcessTree *newProcess = new ProcessTree(buffer->pid);
+        newProcess->ComplishProcessTree(buffer, sourceID);
     }
-    else if (process->second->IsNotAccomplished())
+    else if (process->second->IsNotAccomplished(sourceID))
     {
         // complish process
-        process->second->ComplishProcessTree(buffer);
+        process->second->ComplishProcessTree(buffer, sourceID);
     }
 
     return SUCCESS;
 }
 
-StatusCode ProcessTree::AddThread(ThreadInfoPackage *buffer, ULONG &pointer)
+StatusCode ProcessTree::AddProcess(PROCESSENTRY32 &proc, int sourceID)
+{
+    // search process
+    auto process = ProcessRecords.find(proc.th32ProcessID);
+    if (process == ProcessRecords.end())
+    {
+        // create new process
+        ProcessTree *newProcess = new ProcessTree(proc.th32ProcessID);
+        newProcess->ComplishProcessTree(proc, sourceID);
+    }
+    else if (process->second->IsNotAccomplished(sourceID))
+    {
+        // complish process
+        process->second->ComplishProcessTree(proc, sourceID);
+    }
+
+    return SUCCESS;
+}
+
+    StatusCode ProcessTree::AddThread(ThreadInfoPackage *buffer, ULONG &pointer)
 {
     // check parameters
     if (buffer == nullptr)
@@ -112,25 +123,65 @@ StatusCode ProcessTree::SendInfo(ServerCommunicator &serverCommunicator)
     return SUCCESS;
 }
 
+StatusCode ProcessTree::PrintInfos()
+{
+    for (auto i : ProcessRecords)
+    {
+        if (i.second->PrintSelf(i.first) != SUCCESS)
+            return UNKNOWN;
+    }
+
+    return SUCCESS;
+}
+
+bool ProcessTree::IsNotAccomplished(int sourceID)
+{
+    return source[sourceID] == false;
+}
+
 bool ProcessTree::IsNotAccomplished()
 {
     return Status == NOT_ACCOMPLISHED;
 }
 
-StatusCode ProcessTree::ComplishProcessTree(ProcessInfoPackage *buffer)
+StatusCode ProcessTree::ComplishProcessTree(ProcessInfoPackage *buffer, int sourceID)
 {
-    if (buffer == nullptr)
+    if (buffer == nullptr || sourceID < 0 || sourceID > 3)
         return OUT_OF_RANGE;
 
-    if (Status != NOT_ACCOMPLISHED)
-        return UNKNOWN;
+    if (source[sourceID])
+        return SUCCESS;
 
-    Info = *buffer;
-    USHORT pathLengthTmp = (Info.length - sizeof(ProcessInfoPackage) + sizeof(char16_t *)) / sizeof(char16_t);
+    Info[sourceID] = *buffer;
+    USHORT pathLengthTmp = (Info[sourceID].length - sizeof(ProcessInfoPackage) + sizeof(char16_t *)) / sizeof(char16_t);
     char16_t *tmp = new char16_t[pathLengthTmp];
-    Info.path = tmp;
-    memcpy(Info.path, &buffer->path, pathLengthTmp * sizeof(char16_t));
+    Info[sourceID].path = tmp;
+    memcpy(Info[sourceID].path, &buffer->path, pathLengthTmp * sizeof(char16_t));
     Status = NORMAL;
+    source[sourceID] = true;
+
+    return SUCCESS;
+}
+
+StatusCode ProcessTree::ComplishProcessTree(PROCESSENTRY32 &proc, int sourceID)
+{
+    if (sourceID < 0 || sourceID > 3)
+        return OUT_OF_RANGE;
+
+    if (source[sourceID])
+        return SUCCESS;
+
+    Info[sourceID].pid = proc.th32ProcessID;
+    Info[sourceID].parentPid = proc.th32ParentProcessID;
+    Info[sourceID].type = 1;
+    char16_t *tmp = new char16_t[wcslen(proc.szExeFile) + 1];
+    Info[sourceID].path = tmp;
+	memset(tmp, 0, (wcslen(proc.szExeFile) + 1) * sizeof(char16_t));
+	memcpy(Info[sourceID].path, proc.szExeFile, wcslen(proc.szExeFile) * sizeof(char16_t));
+    memset(Info[sourceID].imageName, 0, sizeof(16));
+    Info[sourceID].length = (USHORT)(sizeof(ProcessInfoPackage) - sizeof(char16_t *) + (wcslen(proc.szExeFile) + 1) * sizeof(char16_t));
+    Status = NORMAL;
+    source[sourceID] = true;
 
     return SUCCESS;
 }
@@ -138,9 +189,6 @@ StatusCode ProcessTree::ComplishProcessTree(ProcessInfoPackage *buffer)
 StatusCode ProcessTree::AddThread(ThreadInfoPackage &package)
 {
     if (Status == ERROR_OCCURRED)
-        return UNKNOWN;
-
-    if (Status == NORMAL && package.parentPid != Info.pid)
         return UNKNOWN;
 
     if (ThreadRecord.find(package) == ThreadRecord.end())
@@ -154,46 +202,58 @@ StatusCode ProcessTree::SendSelf(ServerCommunicator &serverCommunicator)
     if (Status != NORMAL)
         return UNKNOWN;
 
-    htonProcessInfoPackage(Info);
-    serverCommunicator.SendData(&Info, sizeof(Info) - sizeof(char16_t*));
-    serverCommunicator.SendData(Info.path, Info.length - sizeof(Info) + sizeof(char16_t*));
-    ntohProcessInfoPackage(Info);
-
-    for (auto i : ThreadRecord)
+    if (source[0] && source[1] && source[2])
+        return SUCCESS;
+    
+    for (int i = 0; i < 3; i++)
     {
-        htonThreadInfoPackage(i);
-        serverCommunicator.SendData(&i, i.length);
-        ntohThreadInfoPackage(i);
+        if(source[i])
+        {
+            htonProcessInfoPackage(Info[i]);
+            serverCommunicator.SendData(&Info[i], sizeof(Info[i]) - sizeof(char16_t *));
+            serverCommunicator.SendData(Info[i].path, Info[i].length - sizeof(Info[i]) + sizeof(char16_t *));
+            ntohProcessInfoPackage(Info[i]);
+            break;
+        }
     }
+    //for (auto i : ThreadRecord)
+    //{
+    //    htonThreadInfoPackage(i);
+    //    serverCommunicator.SendData(&i, i.length);
+    //    ntohThreadInfoPackage(i);
+    //}
 
     return SUCCESS;
 }
 
-// StatusCode ProcessTree::PrintInfos(PCHAR buff, DWORD bufferLength)
-// {
-//     DWORD pointer{ 0 };
-//     ProcessInfoPackage*infopackage = (ProcessInfoPackage*)(buff + pointer);
-//     ThreadInfoPackage*infopackageThread = (ThreadInfoPackage*)(buff + pointer);
-//     while (bufferLength > pointer)
-//     {
-//         if (bufferLength - pointer < *(unsigned short*)(buff + pointer))
-//             return UNKNOWN;
+StatusCode ProcessTree::PrintSelf(ULONG pid)
+{
+    if (Status != NORMAL)
+        return UNKNOWN;
 
-//         switch (*((unsigned short*)(buff + pointer) + 1))
-//         {
-//         case 1:
-//             infopackage = (ProcessInfoPackage*)(buff + pointer);
-//             printf("ProcessID:%u, ParentID:%u, ImageName:%s, CreateInfo:%ls\n\n", infopackage->pid, infopackage->parentPid, infopackage->imageName, (wchar_t*)&infopackage->path);
-//             break;
-//         case 2:
-//             infopackageThread = (ThreadInfoPackage*)(buff + pointer);
-//             printf("ThreadID:%u, ParentID:%u\n\n", infopackageThread->tid, infopackageThread->parentPid);
-//             break;
-//         default:
-//             cerr << "Meet error" << endl << endl;
-//             break;
-//         }
-//         pointer += *(unsigned short*)(buff + pointer);
-//     }
-//     return SUCCESS;
-// }
+	for (int i = 0; i < 3; i++)
+	{
+		if (source[i])
+			cout << "0-";
+		else
+			cout << "x-";
+	}
+    for (int i = 0; i < 3;i++)
+    {
+        if (source[i])
+        {
+            cout << "ProcessID: " << Info[i].pid << "    ParentProcessID: " << Info[i].parentPid
+                 << "    Name: " << Info[i].imageName << "    CreatePath: ";
+            printf("%ls\n", (wchar_t*)Info[i].path);
+			break;
+        }
+    }
+	if (!source[0] && !source[1] && !source[2])
+		cout << "ProcessID: " << pid << " Not Found" << endl;
+    //for(auto i : ThreadRecord)
+    //{
+    //    cout << "\tThreadID: " << i.tid << "    ParentProcessID: " << i.parentPid << endl;
+    //}
+
+    return SUCCESS;
+}

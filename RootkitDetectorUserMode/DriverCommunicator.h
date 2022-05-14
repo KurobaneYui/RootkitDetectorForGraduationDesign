@@ -4,10 +4,11 @@
 class DriverCommunicator
 {
 private:
-    UINT BufferLength;
+    ULONG BufferLength;
     HANDLE DetectorDevice{};
     PCHAR Buffer{};
-    DWORD ReadLength{};
+    ULONG ReadLength{};
+	int sourceID;
     enum
     {
         DEVICE_OPENED,
@@ -15,12 +16,14 @@ private:
         ERROR_OCCUR
     } Status;
 
-    StatusCode Append2ProcessTree(ProcessTree &PT);
+    StatusCode Append2ProcessTree();
+    StatusCode Append2ProcessTree(PROCESSENTRY32 &proc);
+	StatusCode CallAPI();
 
 public:
-    DriverCommunicator(UINT bufferLength);
+    DriverCommunicator(ULONG bufferLength);
     ~DriverCommunicator();
     StatusCode SwitchDetector(UCHAR id);
     StatusCode Snapshot();
-    StatusCode GetInfo(ProcessTree &PT);
+    StatusCode GetInfo();
 };
