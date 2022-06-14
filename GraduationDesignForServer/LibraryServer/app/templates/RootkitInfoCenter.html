@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN,en-US">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.0.2/css/bootstrap.min.css" rel="stylesheet">
+        <title>Rootkit信息</title>
+    </head>
+    <body class="bg-light">
+        <div class="row">
+            <nav class="navbar navbar-light bg-primary bg-opacity-25 bg-gradient">
+                <div class="container-fluid">
+                    <div class="navbar-brand text-white">Rootkit信息</div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-house text-white" onclick="homeImgClicked()"
+                        viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M2 13.5V7h1v6.5a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7h1v6.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 13.5zm11-11V6l-2-2V2.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5z" />
+                        <path fill-rule="evenodd"
+                            d="M7.293 1.5a1 1 0 0 1 1.414 0l6.647 6.646a.5.5 0 0 1-.708.708L8 2.207 1.354 8.854a.5.5 0 1 1-.708-.708L7.293 1.5z" />
+                    </svg>
+                </div>
+            </nav>
+        </div>
+        <div class="row">
+            <div class="d-flex justify-content-center">
+                <div class="card text-dark bg-light shadow-sm col-10 col-sm-10 col-md-8 col-lg-6 col-xlg-4 mt-5">
+                    <div class="card-header bg-primary bg-gradient">
+                    </div>
+                    <div class="card-body">
+                        <h4>UserID</h4>
+                        <h5 id='UserID'>1322</h5>
+                        <hr class="card-hr"/>
+                        <h5 class="card-title mb-3">选择设备</h5>
+                        <select id="DeviceSelector" class="form-select" aria-label="Default select example">
+                            <option selected>Open this select menu</option>
+                        </select>
+                        <hr class="card-hr" />
+                        <h6 class="card-subtitle text-muted mb-2">监测信息</h6>
+                        <div class="table-responsive rounded shadow-sm">
+                            <table class="table align-middle table-bordered table-hover text-center mb-0">
+                                <thead class="table-primary">
+                                    <tr>
+                                        <th>PID</th>
+                                        <th>ParentPID</th>
+                                        <th>ShortName</th>
+                                        <th>CreatePath</th>
+                                        <th>Datetime</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-body">
+                                </tbody>
+                                <tfoot class="table-secondary">
+                                    <tr>
+                                        <td colspan=5 class="text-muted p-0">~超过30个不显示~</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.0.2/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        var refSet = false;
+
+        var ref;
+
+        function GetInfo() {
+            $.ajax({
+                contentType: "application/json",
+                type: "POST",
+                url: "/func/DeviceRootkits",
+                dataType: "json",
+                data: JSON.stringify({
+                    "UserID": $("#UserID").text(),
+                    "DeviceID": $("#DeviceSelector").val()
+                }),
+                success: function (data, status) {
+                    if(data["return_code"]===0) {
+                        alert("信息获取错误");
+                        clearInterval(ref);
+                        refSet=false;
+                    }
+                    else if(data["return_code"]===200) {
+                        let ProcessInfos = data["ProcessInfos"];
+                        $("#table-body").html('')
+                        for(i in ProcessInfos)
+                        {
+                            let current = ProcessInfos[i];
+                            $("#table-body").append(`
+                                <tr>
+                                    <td>${current['pid']}</td>
+                                    <td>${current['parentPid']}</td>
+                                    <td>${current['shortName']}</td>
+                                    <td>${current['createPath']}</td>
+                                    <td>${current['datetime']}</td>
+                                </tr>
+                            `);
+                        };
+
+                        if(refSet===false)
+                        {
+                            ref = setInterval(function () {
+                                GetInfo();
+                            }, 2000);
+                            refSet=true;
+                        }
+                    }
+                }
+            });
+        }
+
+        $(function() {
+            $.ajax({
+                contentType: "application/json",
+                type: "POST",
+                url: "/func/UserDevices",
+                dataType: "json",
+                data: JSON. stringify({'UserID':$('#UserID').text()
+                }),
+                success: function (data, status){
+                    let returnCode = data["return_code"];
+                    let DeviceIDs = data["DeviceIDs"];
+                    
+                    for(i in DeviceIDs) {
+                        $("#DeviceSelector").append(`
+                        <option value="${DeviceIDs[i]}">${DeviceIDs[i]}</option>
+                        `);
+                    }
+                }
+            });
+
+            $("#DeviceSelector").change(GetInfo);
+        });
+    </script>
+    </body>
+</html>
